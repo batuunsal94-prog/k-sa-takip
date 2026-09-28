@@ -611,7 +611,8 @@
         if(transactions.length === 0) return alert('İndirilecek veri yok.');
         let csvContent = "\uFEFFTarih;Tip;Kategori;Aciklama;Tutar (TL)\n";
         transactions.forEach(t => {
-            csvContent += [formatDate(t.date), t.type === 'income' ? 'Gelir' : 'Gider', `"${t.category}"`, `"${t.description.replace(/"/g, '""')}"`, t.amount.toString().replace('.', ',')].join(";") + "\n";
+            const safeDesc = (t.description || '').replace(/"/g, '""');
+            csvContent += [formatDate(t.date), t.type === 'income' ? 'Gelir' : 'Gider', `"${t.category}"`, `"${safeDesc}"`, t.amount.toString().replace('.', ',')].join(";") + "\n";
         });
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
