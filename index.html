@@ -96,9 +96,11 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 <!-- PANEL -->
 <section id="t-panel" class="tab on">
   <div class="stats">
-    <div class="stat"><small>Kasa bakiyesi</small><b id="s-bal">0 ₺</b></div>
-    <div class="stat"><small>Bu ay gelir</small><b class="ok" id="s-inc">0 ₺</b></div>
+    <div class="stat"><small>Kasadaki toplam nakit (şirket primi dahil)</small><b id="s-bal">0 ₺</b></div>
+    <div class="stat"><small>Şirkete ödenecek prim</small><b class="warn" id="s-prim">0 ₺</b></div>
+    <div class="stat"><small>Bu ay gelir (komisyon + diğer)</small><b class="ok" id="s-inc">0 ₺</b></div>
     <div class="stat"><small>Bu ay gider</small><b class="bad" id="s-exp">0 ₺</b></div>
+    <div class="stat"><small>Bu ay net kazancım</small><b class="ok" id="s-net">0 ₺</b></div>
     <div class="stat"><small>Toplam alacak</small><b class="warn" id="s-rec">0 ₺</b></div>
     <div class="stat"><small>Geciken tutar</small><b class="bad" id="s-late">0 ₺</b></div>
   </div>
@@ -115,13 +117,13 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
       <h2>Yeni kasa işlemi</h2>
       <form id="tf">
         <div class="row2">
-          <div class="f"><label>Tip</label><select id="type"><option value="income">Gelir (+)</option><option value="expense">Gider (−)</option></select></div>
+          <div class="f"><label>Tip</label><select id="type"><option value="income">Gelir (komisyon vb.)</option><option value="expense">Gider</option><option value="prim_in">Prim tahsilatı (şirketin parası)</option><option value="prim_out">Şirkete prim ödemesi</option></select></div>
           <div class="f"><label>Tarih</label><input type="date" id="date" required></div>
         </div>
         <div class="f"><label>Tutar (₺)</label><input type="number" id="amount" step="0.01" min="0.01" required></div>
         <div class="row2">
           <div class="f"><label>Kategori</label><select id="category">
-            <option>Müşteri Tahsilatı</option><option>Poliçe Peşinatı</option><option>Komisyon Geliri</option><option>Fatura Ödemesi</option><option>Şirket Cari Ödemesi</option><option>Personel / Maaş</option><option>Kira / Aidat</option><option>Diğer</option></select></div>
+            <option>Komisyon Geliri</option><option>Diğer Gelir</option><option>Fatura Ödemesi</option><option>Personel / Maaş</option><option>Kira / Aidat</option><option>Diğer</option></select></div>
           <div class="f"><label>Ödeme yöntemi</label><select id="method"><option>Nakit</option><option>Kredi Kartı</option><option>Havale/EFT</option></select></div>
         </div>
         <div class="f"><label>Açıklama</label><textarea id="description" rows="2"></textarea></div>
@@ -132,7 +134,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
       <h2>Kasa hareketleri</h2>
       <div class="filters">
         <input type="month" id="f-month">
-        <select id="f-type"><option value="all">Tüm tipler</option><option value="income">Gelirler</option><option value="expense">Giderler</option></select>
+        <select id="f-type"><option value="all">Tüm tipler</option><option value="income">Gelirler</option><option value="expense">Giderler</option><option value="prim">Prim hareketleri</option></select>
         <input type="search" id="f-q" placeholder="Ara...">
       </div>
       <div class="tw"><table><thead><tr><th>Tarih</th><th>Tip</th><th>Kategori</th><th>Açıklama</th><th>Tutar</th><th></th></tr></thead><tbody id="tl"></tbody></table></div>
@@ -171,7 +173,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
         <div class="f"><label>Sigorta şirketi</label><input id="p-company"></div>
         <div class="row2">
           <div class="f"><label>Toplam tutar (₺)</label><input id="p-amount" type="number" step="0.01" min="1" required></div>
-          <div class="f"><label>Komisyon (%)</label><input id="p-com" type="number" step="0.1" min="0" max="100"></div>
+          <div class="f"><label>Komisyon % (tahsilattan kesilir)</label><input id="p-com" type="number" step="0.1" min="0" max="100"></div>
         </div>
         <div class="row2">
           <div class="f"><label>Taksit</label><select id="p-count"><option value="1">Peşin</option><option>2</option><option>3</option><option>4</option><option>6</option><option>9</option><option>12</option></select></div>
@@ -233,7 +235,7 @@ auth.onAuthStateChanged(u=>{
   if(u){
     unsub=[
       db.collection('transactions').onSnapshot(s=>{tx=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.timestamp-a.timestamp);renderKasa();renderPanel()},fail),
-      db.collection('policies').onSnapshot(s=>{pols=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.timestamp-a.timestamp);renderPols();renderPanel();renderMak()},fail)
+      db.collection('policies').onSnapshot(s=>{pols=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.timestamp-a.timestamp);renderPols();renderPanel();renderMak();renderKasa()},fail)
     ];
   }else{unsub.forEach(f=>f());unsub=[]}
 });
@@ -245,21 +247,25 @@ $('f-month').value=today().slice(0,7);
 
 // ---------- KASA ----------
 $('tf').onsubmit=e=>{e.preventDefault();
-  db.collection('transactions').add({type:$('type').value,date:$('date').value,amount:parseFloat($('amount').value),category:$('category').value,method:$('method').value,description:$('description').value,timestamp:Date.now()})
+  db.collection('transactions').add({type:$('type').value,date:$('date').value,amount:parseFloat($('amount').value),category:$('type').value==='prim_in'?'Prim Tahsilatı':$('type').value==='prim_out'?'Şirkete Prim Ödemesi':$('category').value,method:$('method').value,description:$('description').value,timestamp:Date.now()})
    .then(()=>{toast('Kasaya işlendi');$('tf').reset();$('date').value=today()}).catch(fail)};
 function delTx(id){if(confirm('Bu kasa kaydı silinsin mi?'))db.collection('transactions').doc(id).delete().then(()=>toast('Kayıt silindi')).catch(fail)}
 function kasaFiltered(){
   const m=$('f-month').value,ty=$('f-type').value,q=$('f-q').value.toLowerCase();
-  return tx.filter(t=>(!m||t.date.startsWith(m))&&(ty==='all'||t.type===ty)&&(!q||(t.description+t.category).toLowerCase().includes(q)));
+  return tx.filter(t=>(!m||t.date.startsWith(m))&&(ty==='all'||(ty==='prim'?kind(t).startsWith('prim'):kind(t)===ty))&&(!q||(t.description+t.category).toLowerCase().includes(q)));
 }
+// Prim (müşteriden alınıp şirkete aktarılan para) kazanca sayılmaz. Eski kayıtlar da otomatik prim sayılır.
+const kind=t=>t.type==='prim_in'||t.type==='prim_out'?t.type:(t.type==='income'&&['Müşteri Tahsilatı','Poliçe Peşinatı'].includes(t.category))?'prim_in':(t.type==='expense'&&t.category==='Şirket Cari Ödemesi')?'prim_out':t.type;
+const commSum=m=>pols.reduce((a,p)=>a+p.installments.filter(i=>i.isPaid&&(!m||(i.paidDate||'').startsWith(m))).reduce((s,i)=>s+i.amount*(p.commission||0)/100,0),0);
+const KL={income:['Gelir','p-ok','ok','+'],expense:['Gider','p-bad','bad','−'],prim_in:['Prim tahsilatı','p-warn','warn','+'],prim_out:['Şirkete prim','p-warn','warn','−']};
 function renderKasa(){
   const f=kasaFiltered();
-  $('tl').innerHTML=f.length?f.map(t=>`<tr><td>${fd(t.date)}</td><td><span class="pill ${t.type==='income'?'p-ok':'p-bad'}">${t.type==='income'?'Gelir':'Gider'}</span></td>
+  $('tl').innerHTML=f.length?f.map(t=>{const k=KL[kind(t)]||KL.income;return `<tr><td>${fd(t.date)}</td><td><span class="pill ${k[1]}">${k[0]}</span></td>
     <td>${esc(t.category)}<br><small style="color:var(--muted)">${esc(t.method||'')}</small></td><td class="w">${esc(t.description)||'-'}</td>
-    <td class="${t.type==='income'?'ok':'bad'}"><b>${t.type==='income'?'+':'−'}${money(t.amount)}</b></td><td><button class="x" onclick="delTx('${t.id}')">✕</button></td></tr>`).join('')
+    <td class="${k[2]}"><b>${k[3]}${money(t.amount)}</b></td><td><button class="x" onclick="delTx('${t.id}')">✕</button></td></tr>`}).join('')
     :'<tr><td colspan="6" class="empty">Bu filtreye uygun kayıt yok.</td></tr>';
-  const i=f.filter(t=>t.type==='income').reduce((a,t)=>a+t.amount,0),x=f.filter(t=>t.type==='expense').reduce((a,t)=>a+t.amount,0);
-  $('k-sum').innerHTML=`Listelenen: <span class="ok">Gelir ${money(i)}</span> · <span class="bad">Gider ${money(x)}</span> · Net ${money(i-x)}`;
+  const s=x=>f.filter(t=>kind(t)===x).reduce((a,t)=>a+t.amount,0),cm=commSum($('f-month').value);
+  $('k-sum').innerHTML=`Gelir <span class="ok">${money(s('income'))}</span> + poliçe komisyonu <span class="ok">${money(cm)}</span> · Gider <span class="bad">${money(s('expense'))}</span> · <b>Net kazanç ${money(s('income')+cm-s('expense'))}</b><br><small style="color:var(--muted)">Prim tahsilatı ${money(s('prim_in'))} · Şirkete ödenen ${money(s('prim_out'))} (kazanca dahil değil)</small>`;
 }
 ['f-month','f-type','f-q'].forEach(id=>$(id).addEventListener('input',renderKasa));
 
@@ -280,7 +286,7 @@ function payInst(pid,iid){
   i.isPaid=true;i.paidDate=today();
   const b=db.batch();
   b.update(db.collection('policies').doc(pid),{installments:p.installments});
-  b.set(db.collection('transactions').doc(),{type:'income',date:i.paidDate,amount:i.amount,category:'Müşteri Tahsilatı',method:i.method,
+  b.set(db.collection('transactions').doc(),{type:'prim_in',date:i.paidDate,amount:i.amount,category:'Prim Tahsilatı',method:i.method,
     description:`${p.client} - Pol No: ${p.policyNo} (${i.number}. taksit)`,timestamp:Date.now()});
   b.commit().then(()=>{toast('Tahsilat kasaya işlendi');if(confirm('Tahsilat makbuzu oluşturulsun mu?'))receipt(pid,iid)}).catch(fail);
 }
@@ -317,10 +323,11 @@ function renderPols(){
 // ---------- PANEL ----------
 function renderPanel(){
   const m=today().slice(0,7);
-  const inc=tx.filter(t=>t.type==='income'),exp=tx.filter(t=>t.type==='expense'),sum=a=>a.reduce((s,t)=>s+t.amount,0);
-  $('s-bal').textContent=money(sum(inc)-sum(exp));
-  $('s-inc').textContent=money(sum(inc.filter(t=>t.date.startsWith(m))));
-  $('s-exp').textContent=money(sum(exp.filter(t=>t.date.startsWith(m))));
+  const K=x=>tx.filter(t=>kind(t)===x),sum=a=>a.reduce((s,t)=>s+t.amount,0),inM=a=>a.filter(t=>t.date.startsWith(m));
+  const P=sum(K('prim_in'))-sum(K('prim_out')),gel=sum(inM(K('income')))+commSum(m),gid=sum(inM(K('expense')));
+  $('s-bal').textContent=money(sum(K('income'))-sum(K('expense'))+P);
+  $('s-prim').textContent=money(P-commSum());
+  $('s-inc').textContent=money(gel);$('s-exp').textContent=money(gid);$('s-net').textContent=money(gel-gid);
   $('s-rec').textContent=money(pols.reduce((a,p)=>a+remaining(p),0));
   const due=[];
   pols.forEach(p=>p.installments.forEach(i=>{if(!i.isPaid){const d=daysTo(i.dueDate);if(d<=7)due.push({p,i,d})}}));
@@ -446,7 +453,7 @@ function csv(name,rows){
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s],{type:'text/csv;charset=utf-8;'}));a.download=`${name}_${today()}.csv`;a.click();
 }
 function exportKasa(){const f=kasaFiltered();if(!f.length)return toast('İndirilecek veri yok');
-  csv('Kasa',[['Tarih','Tip','Kategori','Yöntem','Açıklama','Tutar (TL)'],...f.map(t=>[fd(t.date),t.type==='income'?'Gelir':'Gider',t.category,t.method||'',t.description||'',String(t.amount).replace('.',',')])])}
+  csv('Kasa',[['Tarih','Tip','Kategori','Yöntem','Açıklama','Tutar (TL)'],...f.map(t=>[fd(t.date),(KL[kind(t)]||KL.income)[0],t.category,t.method||'',t.description||'',String(t.amount).replace('.',',')])])}
 function exportPol(){if(!pols.length)return toast('İndirilecek veri yok');
   csv('Policeler',[['Müşteri','Telefon','Poliçe No','Tür','Şirket','Bitiş','Toplam (TL)','Kalan (TL)','Komisyon %'],...pols.map(p=>[p.client,p.phone||'',p.policyNo,p.type||'',p.company||'',fd(p.endDate),String(p.totalAmount).replace('.',','),String(remaining(p)).replace('.',','),p.commission||0])])}
 </script>
