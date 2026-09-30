@@ -1,863 +1,425 @@
-<!-- Fonts & Icons -->
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-
-<!-- Firebase SDK (CDN) -->
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acente Kasa & Poliçe Takip</title>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-
 <style>
-    :root {
-        --primary: #2563eb;
-        --primary-hover: #1d4ed8;
-        --primary-light: rgba(37, 99, 235, 0.1);
-        --bg-body: #0f172a;
-        --surface-dark: #1e293b;
-        --surface-card: rgba(30, 41, 59, 0.7);
-        --text-main: #f8fafc;
-        --text-muted: #94a3b8;
-        --border-color: rgba(255, 255, 255, 0.08);
-        
-        --success: #10b981;
-        --danger: #ef4444;
-        --warning: #f59e0b;
-        --info: #06b6d4;
-        
-        --sidebar-width: 260px;
-    }
-
-    * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-        font-family: 'Plus Jakarta Sans', sans-serif;
-    }
-
-    body {
-        background-color: var(--bg-body);
-        color: var(--text-main);
-        min-height: 100vh;
-        overflow-x: hidden;
-    }
-
-    /* ---------------------------------- */
-    /* GİRİŞ EKRANI TASARIMI (MODERN GLASS) */
-    /* ---------------------------------- */
-    #login-screen {
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        background: radial-gradient(circle at 50% 20%, #1e293b 0%, #0f172a 100%);
-        position: relative;
-    }
-
-    .login-glow {
-        position: absolute;
-        width: 450px;
-        height: 450px;
-        background: radial-gradient(circle, rgba(37, 99, 235, 0.25) 0%, rgba(0,0,0,0) 70%);
-        top: 30%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        pointer-events: none;
-    }
-
-    .login-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-grow: 1;
-        padding: 40px 20px;
-        z-index: 1;
-    }
-
-    .login-card {
-        background: rgba(30, 41, 59, 0.65);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 24px;
-        padding: 40px;
-        width: 100%;
-        max-width: 420px;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-    }
-
-    .brand-header {
-        text-align: center;
-        margin-bottom: 32px;
-    }
-
-    .brand-logo {
-        width: 60px;
-        height: 60px;
-        background: linear-gradient(135deg, #2563eb, #3b82f6);
-        border-radius: 16px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 26px;
-        color: #fff;
-        margin-bottom: 16px;
-        box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
-    }
-
-    .brand-header h1 {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: #fff;
-        letter-spacing: -0.5px;
-    }
-
-    .brand-header p {
-        font-size: 0.875rem;
-        color: var(--text-muted);
-        margin-top: 4px;
-    }
-
-    .form-group {
-        margin-bottom: 20px;
-    }
-
-    .form-group label {
-        display: block;
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: var(--text-muted);
-        margin-bottom: 8px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .input-wrapper {
-        position: relative;
-    }
-
-    .input-wrapper i {
-        position: absolute;
-        left: 14px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #64748b;
-        font-size: 1rem;
-        transition: color 0.3s;
-    }
-
-    .form-control {
-        width: 100%;
-        padding: 12px 16px 12px 42px;
-        background: rgba(15, 23, 42, 0.6);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        color: #ffffff;
-        font-size: 0.95rem;
-        outline: none;
-        transition: all 0.3s ease;
-    }
-
-    .form-control:focus {
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
-    }
-
-    .form-control:focus + i {
-        color: var(--primary);
-    }
-
-    .btn-primary-btn {
-        width: 100%;
-        padding: 14px;
-        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-        border: none;
-        border-radius: 12px;
-        color: #ffffff;
-        font-size: 1rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: transform 0.2s, box-shadow 0.2s;
-        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
-    }
-
-    .btn-primary-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
-    }
-
-    #login-error {
-        background: rgba(239, 68, 68, 0.15);
-        border: 1px solid rgba(239, 68, 68, 0.3);
-        color: #fca5a5;
-        padding: 10px;
-        border-radius: 10px;
-        font-size: 0.85rem;
-        margin-top: 15px;
-        text-align: center;
-        display: none;
-    }
-
-    /* LOGO BANTI (SLIDER/MARQUEE) */
-    .partners-section {
-        width: 100%;
-        padding: 24px 0;
-        background: rgba(15, 23, 42, 0.8);
-        border-top: 1px solid var(--border-color);
-        z-index: 1;
-    }
-
-    .partners-title {
-        text-align: center;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-        color: #64748b;
-        margin-bottom: 16px;
-        font-weight: 600;
-    }
-
-    .slider {
-        width: 100%;
-        overflow: hidden;
-        display: flex;
-        position: relative;
-    }
-
-    .slider::before, .slider::after {
-        content: "";
-        position: absolute;
-        width: 120px;
-        height: 100%;
-        z-index: 2;
-        pointer-events: none;
-    }
-
-    .slider::before { left: 0; background: linear-gradient(to right, #0f172a, transparent); }
-    .slider::after { right: 0; background: linear-gradient(to left, #0f172a, transparent); }
-
-    .slide-track {
-        display: flex;
-        width: calc(180px * 14);
-        animation: scroll 30s linear infinite;
-    }
-
-    .slide-track:hover { animation-play-state: paused; }
-
-    .slide {
-        width: 180px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0 15px;
-    }
-
-    .slide-badge {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid var(--border-color);
-        padding: 8px 16px;
-        border-radius: 10px;
-        font-weight: 600;
-        font-size: 0.85rem;
-        color: #cbd5e1;
-        white-space: nowrap;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        transition: all 0.3s ease;
-    }
-
-    .slide-badge:hover {
-        border-color: var(--primary);
-        color: #fff;
-        background: rgba(37, 99, 235, 0.15);
-    }
-
-    @keyframes scroll {
-        0% { transform: translateX(0); }
-        100% { transform: translateX(calc(-180px * 7)); }
-    }
-
-    /* ---------------------------------- */
-    /* ANA UYGULAMA DASHBOARD (SIDEBAR + MAIN) */
-    /* ---------------------------------- */
-    #app-screen {
-        display: none;
-        min-height: 100vh;
-    }
-
-    .dashboard-layout {
-        display: flex;
-        min-height: 100vh;
-    }
-
-    /* Sidebar */
-    .sidebar {
-        width: var(--sidebar-width);
-        background: #1e293b;
-        border-right: 1px solid var(--border-color);
-        display: flex;
-        flex-direction: column;
-        position: fixed;
-        top: 0;
-        bottom: 0;
-        left: 0;
-        z-index: 100;
-    }
-
-    .sidebar-brand {
-        padding: 24px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        border-bottom: 1px solid var(--border-color);
-    }
-
-    .sidebar-brand i {
-        font-size: 24px;
-        color: var(--primary);
-    }
-
-    .sidebar-brand h2 {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #fff;
-    }
-
-    .sidebar-menu {
-        padding: 20px 12px;
-        flex-grow: 1;
-    }
-
-    .menu-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 16px;
-        color: var(--text-muted);
-        border-radius: 12px;
-        font-weight: 600;
-        font-size: 0.9rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        margin-bottom: 6px;
-    }
-
-    .menu-item:hover, .menu-item.active {
-        color: #fff;
-        background: var(--primary);
-    }
-
-    .sidebar-footer {
-        padding: 20px;
-        border-top: 1px solid var(--border-color);
-    }
-
-    /* Main Content */
-    .main-wrapper {
-        margin-left: var(--sidebar-width);
-        flex-grow: 1;
-        padding: 30px;
-        max-width: calc(100vw - var(--sidebar-width));
-    }
-
-    .top-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 25px;
-    }
-
-    .top-header h1 {
-        font-size: 1.5rem;
-        font-weight: 700;
-    }
-
-    .status-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        background: rgba(16, 185, 129, 0.1);
-        border: 1px solid rgba(16, 185, 129, 0.2);
-        color: var(--success);
-        padding: 8px 16px;
-        border-radius: 30px;
-        font-size: 0.8rem;
-        font-weight: 600;
-    }
-
-    .status-dot {
-        width: 8px;
-        height: 8px;
-        background: var(--success);
-        border-radius: 50%;
-        box-shadow: 0 0 8px var(--success);
-    }
-
-    /* İstatistik Kartları */
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 20px;
-        margin-bottom: 25px;
-    }
-
-    .stat-card {
-        background: #1e293b;
-        border: 1px solid var(--border-color);
-        border-radius: 16px;
-        padding: 20px;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .stat-card::before {
-        content: "";
-        position: absolute;
-        top: 0; left: 0; width: 4px; height: 100%;
-    }
-
-    .stat-card.income::before { background: var(--success); }
-    .stat-card.expense::before { background: var(--danger); }
-    .stat-card.balance::before { background: var(--primary); }
-    .stat-card.receivable::before { background: var(--warning); }
-
-    .stat-card p {
-        font-size: 0.8rem;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-    }
-
-    .stat-card h3 {
-        font-size: 1.6rem;
-        font-weight: 700;
-        margin-top: 8px;
-    }
-
-    .stat-card.income h3 { color: var(--success); }
-    .stat-card.expense h3 { color: var(--danger); }
-    .stat-card.balance h3 { color: #fff; }
-    .stat-card.receivable h3 { color: var(--warning); }
-
-    /* Grid Layout (Form & Tablo) */
-    .content-grid {
-        display: grid;
-        grid-template-columns: 340px 1fr;
-        gap: 25px;
-    }
-
-    @media (max-width: 1100px) {
-        .content-grid { grid-template-columns: 1fr; }
-        .sidebar { width: 80px; }
-        .sidebar-brand h2, .menu-item span, .btn-logout span { display: none; }
-        .main-wrapper { margin-left: 80px; max-width: calc(100vw - 80px); }
-    }
-
-    .card-panel {
-        background: #1e293b;
-        border: 1px solid var(--border-color);
-        border-radius: 16px;
-        padding: 24px;
-    }
-
-    .panel-title {
-        font-size: 1.1rem;
-        font-weight: 700;
-        margin-bottom: 20px;
-        padding-bottom: 12px;
-        border-bottom: 1px solid var(--border-color);
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .panel-title i { color: var(--primary); }
-
-    /* Modern Tablo */
-    .filter-bar {
-        display: flex;
-        gap: 12px;
-        margin-bottom: 16px;
-        flex-wrap: wrap;
-    }
-
-    .table-container {
-        overflow-x: auto;
-        border-radius: 12px;
-        border: 1px solid var(--border-color);
-    }
-
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.875rem;
-        text-align: left;
-    }
-
-    th {
-        background: rgba(15, 23, 42, 0.6);
-        color: var(--text-muted);
-        font-weight: 600;
-        padding: 14px 16px;
-        border-bottom: 1px solid var(--border-color);
-        white-space: nowrap;
-    }
-
-    td {
-        padding: 14px 16px;
-        border-bottom: 1px solid var(--border-color);
-        color: #e2e8f0;
-    }
-
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(255, 255, 255, 0.02); }
-
-    /* Badges & Buttons */
-    .badge {
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        display: inline-block;
-    }
-
-    .badge-income { background: rgba(16, 185, 129, 0.15); color: #34d399; }
-    .badge-expense { background: rgba(239, 68, 68, 0.15); color: #f87171; }
-    .badge-paid { background: rgba(16, 185, 129, 0.15); color: #34d399; }
-    .badge-unpaid { background: rgba(239, 68, 68, 0.15); color: #f87171; }
-
-    .btn-action {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid var(--border-color);
-        color: #fff;
-        padding: 6px 12px;
-        border-radius: 8px;
-        cursor: pointer;
-        font-weight: 600;
-        font-size: 0.8rem;
-        transition: all 0.2s;
-    }
-
-    .btn-action:hover {
-        background: var(--primary);
-        border-color: var(--primary);
-    }
-
-    .btn-delete {
-        background: rgba(239, 68, 68, 0.1);
-        color: var(--danger);
-        border: 1px solid rgba(239, 68, 68, 0.2);
-        padding: 6px 10px;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .btn-delete:hover {
-        background: var(--danger);
-        color: #fff;
-    }
-
-    .btn-logout {
-        width: 100%;
-        background: rgba(239, 68, 68, 0.1);
-        color: #fca5a5;
-        border: 1px solid rgba(239, 68, 68, 0.2);
-        padding: 10px;
-        border-radius: 10px;
-        cursor: pointer;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        transition: all 0.2s;
-    }
-
-    .btn-logout:hover {
-        background: var(--danger);
-        color: #fff;
-    }
-
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-
-    .installments-table {
-        width: 100%;
-        background: rgba(15, 23, 42, 0.4);
-        border-radius: 8px;
-        margin: 8px 0;
-    }
-
-    .installments-table th { background: rgba(0,0,0,0.2); }
+:root{--bg:#f3f5f8;--card:#fff;--text:#1b2430;--muted:#6b7686;--line:#e4e8ee;--pri:#0f766e;--pri-d:#0b5a54;--ok:#15803d;--warn:#b45309;--bad:#dc2626;--soft:#eef2f6;--r:14px}
+[data-theme=dark]{--bg:#0e141b;--card:#161e28;--text:#e6ebf2;--muted:#8b97a8;--line:#263241;--pri:#2dd4bf;--pri-d:#5eead4;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--soft:#1d2734}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+button,input,select,textarea{font:inherit;color:inherit}
+.wrap{max-width:1240px;margin:0 auto;padding:0 20px 40px}
+#login{max-width:380px;margin:12vh auto;background:var(--card);padding:32px;border-radius:var(--r);border:1px solid var(--line);text-align:center}
+#login h2{margin-bottom:18px}
+#app{display:none}
+header{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line)}
+.bar{max-width:1240px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{font-weight:700;font-size:16px;margin-right:auto}
+nav{display:flex;gap:4px;background:var(--soft);padding:4px;border-radius:10px}
+nav button{border:0;background:none;padding:8px 16px;border-radius:8px;cursor:pointer;color:var(--muted);font-weight:600}
+nav button.on{background:var(--card);color:var(--pri);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.ic{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 11px;cursor:pointer}
+.tab{display:none;padding-top:20px}.tab.on{display:block}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:18px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.stat small{color:var(--muted);font-weight:600}
+.stat b{display:block;font-size:24px;margin-top:6px;letter-spacing:-.5px}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.split{display:grid;grid-template-columns:320px 1fr;gap:18px;align-items:start}
+@media(max-width:900px){.grid2,.split{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.panel h2{font-size:16px;margin-bottom:12px}
+.f{margin-bottom:11px}.f label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px}
+input,select,textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--pri);outline-offset:1px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{border:0;background:var(--pri);color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;cursor:pointer;width:100%}
+[data-theme=dark] .btn{color:#06201d}
+.btn:hover{background:var(--pri-d)}
+.sm{width:auto;padding:5px 10px;font-size:12px}
+.ghost{background:var(--soft);color:var(--text)}.ghost:hover{background:var(--line)}
+.wa{background:#22c55e;color:#fff}.wa:hover{background:#16a34a}
+.x{border:0;background:none;color:var(--bad);cursor:pointer;font-weight:700;padding:4px 8px}
+.filters{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}.filters>*{width:auto;flex:1;min-width:130px}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font-size:12px;font-weight:600}
+td.w{white-space:normal}
+.pill{padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700}
+.p-ok{background:rgba(21,128,61,.14);color:var(--ok)}.p-bad{background:rgba(220,38,38,.14);color:var(--bad)}.p-warn{background:rgba(180,83,9,.15);color:var(--warn)}
+.item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.item:last-child{border:0}.item small{color:var(--muted);display:block}
+.acts{display:flex;gap:6px}
+.empty{color:var(--muted);text-align:center;padding:22px}
+.sub{background:var(--soft)}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:99px;display:none;z-index:9}
+dialog{border:1px solid var(--line);border-radius:var(--r);padding:22px;background:var(--card);color:var(--text);width:min(480px,92vw);margin:auto}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+@media print{header,.split>.panel:first-child,.filters,.acts,.x,.btn{display:none!important}}
 </style>
+</head>
+<body>
 
-
-<div class="login-container">
-    <div class="login-card">
-        <div class="brand-header">
-            <div class="brand-logo">
-                <i class="fa-solid fa-shield-halved"></i>
-            </div>
-            <h1>ÜNSALLAR GRUP</h1>
-            <p>Acente Kasa & Poliçe Takip Portalı</p>
-        </div>
-
-        <form id="login-form">
-            <div class="form-group">
-                <label>E-Posta Adresi</label>
-                <div class="input-wrapper">
-                    <input type="email" id="login-email" class="form-control" placeholder="ornek@unsallar.com" required>
-                    <i class="fa-regular fa-envelope"></i>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>Şifre</label>
-                <div class="input-wrapper">
-                    <input type="password" id="login-password" class="form-control" placeholder="••••••••" required>
-                    <i class="fa-solid fa-lock"></i>
-                </div>
-            </div>
-
-            <button type="submit" class="btn-primary-btn">
-                Sisteme Giriş Yap <i class="fa-solid fa-arrow-right-to-bracket" style="margin-left: 8px;"></i>
-            </button>
-
-            <div id="login-error">Hatalı e-posta veya şifre!</div>
-        </form>
-    </div>
+<div id="login">
+  <h2>🔒 Acente Girişi</h2>
+  <form id="login-form">
+    <div class="f"><input type="email" id="le" placeholder="E-posta" required></div>
+    <div class="f"><input type="password" id="lp" placeholder="Şifre" required></div>
+    <button class="btn">Giriş yap</button>
+    <p id="lerr" class="bad" style="margin-top:10px;display:none"></p>
+  </form>
 </div>
 
-<!-- Anlaşmalı Sigorta Şirketleri Logoları -->
-<div class="partners-section">
-    <div class="partners-title">Anlaşmalı Sigorta Şirketlerimiz</div>
-    <div class="slider">
-        <div class="slide-track">
-            <div class="slide"><div class="slide-badge"><i class="fa-solid fa-building-shield"></i> TÜRKİYE SİGORTA</div></div>
-            <div class="slide"><div class="slide-badge"><i class="fa-solid fa-building-shield"></i> ANADOLU SİGORTA</div></div>
-            <div class="slide"><div class="slide-badge"><i class="fa-solid fa-building-shield"></i> ALLIANZ</div></div>
-            <div class="slide"><div class="slide-badge"><i class="fa-solid fa-building-shield"></i> AXA SİGORTA</div></div>
-            <div class="slide"><div class="slide-badge"><i class="fa-solid fa-building-shield"></i> HDI SİGORTA</div></div>
-            <div class="slide"><div class="slide-badge"><i class="fa-solid fa-building-shield"></i> SOMPO SİGORTA</div></div>
-            <div class="slide"><div class="slide-badge"><i class="fa-solid fa-building-shield"></i> QUICK SİGORTA</div></div>
+<div id="app">
+<header><div class="bar">
+  <span class="brand">🛡️ Acente Kasa & Poliçe</span>
+  <nav>
+    <button class="on" data-t="panel">Panel</button>
+    <button data-t="kasa">Kasa</button>
+    <button data-t="pol">Poliçeler</button>
+  </nav>
+  <button class="ic" onclick="$('dlg').showModal()">🏢 Acente Bilgileri</button>
+  <button class="ic" id="theme" title="Tema">🌙</button>
+  <button class="ic" onclick="auth.signOut()">Çıkış</button>
+</div></header>
 
-            <!-- Döngü Tekrarı -->
-            <div class="slide"><div class="slide-badge"><i class="fa-solid fa-building-shield"></i> TÜRKİYE SİGORTA</div></div>
-            <div class="slide"><div class="slide-badge"><i class="fa-solid fa-building-shield"></i> ANADOLU SİGORTA</div></div>
-            <div class="slide"><div class="slide-badge"><i class="fa-solid fa-building-shield"></i> ALLIANZ</div></div>
-            <div class="slide"><div class="slide-badge"><i class="fa-solid fa-building-shield"></i> AXA SİGORTA</div></div>
-            <div class="slide"><div class="slide-badge"><i class="fa-solid fa-building-shield"></i> HDI SİGORTA</div></div>
-            <div class="slide"><div class="slide-badge"><i class="fa-solid fa-building-shield"></i> SOMPO SİGORTA</div></div>
-            <div class="slide"><div class="slide-badge"><i class="fa-solid fa-building-shield"></i> QUICK SİGORTA</div></div>
+<div class="wrap">
+
+<!-- PANEL -->
+<section id="t-panel" class="tab on">
+  <div class="stats">
+    <div class="stat"><small>Kasa bakiyesi</small><b id="s-bal">0 ₺</b></div>
+    <div class="stat"><small>Bu ay gelir</small><b class="ok" id="s-inc">0 ₺</b></div>
+    <div class="stat"><small>Bu ay gider</small><b class="bad" id="s-exp">0 ₺</b></div>
+    <div class="stat"><small>Toplam alacak</small><b class="warn" id="s-rec">0 ₺</b></div>
+    <div class="stat"><small>Geciken tutar</small><b class="bad" id="s-late">0 ₺</b></div>
+  </div>
+  <div class="grid2">
+    <div class="panel"><h2>Geciken ve 7 gün içinde vadesi gelen taksitler</h2><div id="due"></div></div>
+    <div class="panel"><h2>30 gün içinde biten poliçeler (yenileme)</h2><div id="ren"></div></div>
+  </div>
+</section>
+
+<!-- KASA -->
+<section id="t-kasa" class="tab">
+  <div class="split">
+    <div class="panel">
+      <h2>Yeni kasa işlemi</h2>
+      <form id="tf">
+        <div class="row2">
+          <div class="f"><label>Tip</label><select id="type"><option value="income">Gelir (+)</option><option value="expense">Gider (−)</option></select></div>
+          <div class="f"><label>Tarih</label><input type="date" id="date" required></div>
         </div>
+        <div class="f"><label>Tutar (₺)</label><input type="number" id="amount" step="0.01" min="0.01" required></div>
+        <div class="row2">
+          <div class="f"><label>Kategori</label><select id="category">
+            <option>Müşteri Tahsilatı</option><option>Poliçe Peşinatı</option><option>Komisyon Geliri</option><option>Fatura Ödemesi</option><option>Şirket Cari Ödemesi</option><option>Personel / Maaş</option><option>Kira / Aidat</option><option>Diğer</option></select></div>
+          <div class="f"><label>Ödeme yöntemi</label><select id="method"><option>Nakit</option><option>Kredi Kartı</option><option>Havale/EFT</option></select></div>
+        </div>
+        <div class="f"><label>Açıklama</label><textarea id="description" rows="2"></textarea></div>
+        <button class="btn">Kasaya işle</button>
+      </form>
     </div>
-</div>
-
-
-        <div class="sidebar-menu">
-            <div class="menu-item active" id="menu-kasa" onclick="switchTab('kasa')">
-                <i class="fa-solid fa-wallet"></i>
-                <span>Kasa Defteri</span>
-            </div>
-            <div class="menu-item" id="menu-borc" onclick="switchTab('borc')">
-                <i class="fa-solid fa-file-invoice-dollar"></i>
-                <span>Poliçe Borç Takibi</span>
-            </div>
-        </div>
-
-        <div class="sidebar-footer">
-            <button class="btn-logout" onclick="logout()">
-                <i class="fa-solid fa-right-from-bracket"></i>
-                <span>Çıkış Yap</span>
-            </button>
-        </div>
+    <div class="panel">
+      <h2>Kasa hareketleri</h2>
+      <div class="filters">
+        <input type="month" id="f-month">
+        <select id="f-type"><option value="all">Tüm tipler</option><option value="income">Gelirler</option><option value="expense">Giderler</option></select>
+        <input type="search" id="f-q" placeholder="Ara...">
+      </div>
+      <div class="tw"><table><thead><tr><th>Tarih</th><th>Tip</th><th>Kategori</th><th>Açıklama</th><th>Tutar</th><th></th></tr></thead><tbody id="tl"></tbody></table></div>
+      <p id="k-sum" style="margin:12px 0;font-weight:600"></p>
+      <div class="acts"><button class="btn sm ghost" onclick="exportKasa()">Excel (CSV) indir</button><button class="btn sm ghost" onclick="print()">Yazdır</button></div>
     </div>
+  </div>
+</section>
 
-    <!-- Main Content Area -->
-    <div class="main-wrapper">
-        <div class="top-header">
-            <h1 id="page-title">Günlük Kasa Defteri</h1>
-            <div class="status-pill">
-                <span class="status-dot"></span>
-                Bulut Senkronizasyonu Aktif
-            </div>
+<!-- POLİÇE -->
+<section id="t-pol" class="tab">
+  <div class="split">
+    <div class="panel">
+      <h2>Yeni poliçe kaydı</h2>
+      <form id="pf">
+        <div class="f"><label>Müşteri</label><input id="p-client" required></div>
+        <div class="f"><label>Telefon (WhatsApp için)</label><input id="p-phone" type="tel" placeholder="05xx xxx xx xx"></div>
+        <div class="row2">
+          <div class="f"><label>Poliçe no</label><input id="p-no" required></div>
+          <div class="f"><label>Tür</label><select id="p-type"><option>Trafik</option><option>Kasko</option><option>DASK</option><option>Konut</option><option>Sağlık</option><option>Hayat</option><option>İşyeri</option><option>Seyahat</option><option>Diğer</option></select></div>
         </div>
-
-        <!-- TAB 1: KASA DEFTERİ -->
-        <div id="tab-kasa" class="tab-content active">
-            <div class="stats-grid">
-                <div class="stat-card income">
-                    <p>Toplam Gelir</p>
-                    <h3 id="total-income">0,00 ₺</h3>
-                </div>
-                <div class="stat-card expense">
-                    <p>Toplam Gider</p>
-                    <h3 id="total-expense">0,00 ₺</h3>
-                </div>
-                <div class="stat-card balance">
-                    <p>Kasa Bakiyesi</p>
-                    <h3 id="net-balance">0,00 ₺</h3>
-                </div>
-            </div>
-
-            <div class="content-grid">
-                <div class="card-panel">
-                    <div class="panel-title">
-                        <i class="fa-solid fa-plus-circle"></i> Yeni Kasa İşlemi
-                    </div>
-                    <form id="transaction-form">
-                        <div class="form-group">
-                            <label>İşlem Tipi</label>
-                            <select id="type" class="form-control" required>
-                                <option value="income">Gelir (+)</option>
-                                <option value="expense">Gider (-)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Tarih</label>
-                            <input type="date" id="date" class="form-control" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Tutar (₺)</label>
-                            <input type="number" id="amount" step="0.01" min="0.01" class="form-control" placeholder="0.00" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Kategori</label>
-                            <select id="category" class="form-control" required>
-                                <option value="Müşteri Tahsilatı">Müşteri Tahsilatı</option>
-                                <option value="Poliçe Peşinatı">Poliçe Peşinatı</option>
-                                <option value="Komisyon Geliri">Komisyon Geliri</option>
-                                <option value="Fatura Ödemesi">Fatura Ödemesi</option>
-                                <option value="Şirket Cari Ödemesi">Şirket Cari Ödemesi</option>
-                                <option value="Personel / Maaş">Personel / Maaş</option>
-                                <option value="Kira / Aidat">Kira / Aidat</option>
-                                <option value="Diğer">Diğer</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Açıklama</label>
-                            <textarea id="description" class="form-control" rows="2" placeholder="İşlem detayı..."></textarea>
-                        </div>
-                        <button type="submit" class="btn-primary-btn">Kasaya İşle</button>
-                    </form>
-                </div>
-
-                <div class="card-panel">
-                    <div class="panel-title" style="justify-content: space-between;">
-                        <span><i class="fa-solid fa-list-check"></i> Kasa Hareketleri</span>
-                        <button class="btn-action" onclick="exportKasaCSV()"><i class="fa-solid fa-file-excel"></i> Excel (CSV)</button>
-                    </div>
-
-                    <div class="filter-bar">
-                        <input type="date" id="filter-date" class="form-control" style="width: auto;">
-                        <select id="filter-type" class="form-control" style="width: auto;">
-                            <option value="all">Tüm Tipler</option>
-                            <option value="income">Sadece Gelirler</option>
-                            <option value="expense">Sadece Giderler</option>
-                        </select>
-                        <button class="btn-action" onclick="resetKasaFilters()">Temizle</button>
-                    </div>
-
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Tarih</th>
-                                    <th>Tip</th>
-                                    <th>Kategori</th>
-                                    <th>Açıklama</th>
-                                    <th>Tutar</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody id="transaction-list"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+        <div class="f"><label>Sigorta şirketi</label><input id="p-company"></div>
+        <div class="row2">
+          <div class="f"><label>Toplam tutar (₺)</label><input id="p-amount" type="number" step="0.01" min="1" required></div>
+          <div class="f"><label>Komisyon (%)</label><input id="p-com" type="number" step="0.1" min="0" max="100"></div>
         </div>
-
-        <!-- TAB 2: POLİÇE BORÇ TAKİBİ -->
-        <div id="tab-borc" class="tab-content">
-            <div class="stats-grid">
-                <div class="stat-card receivable">
-                    <p>Toplam Müşteri Alacağı</p>
-                    <h3 id="total-receivable">0,00 ₺</h3>
-                </div>
-            </div>
-
-            <div class="content-grid">
-                <div class="card-panel">
-                    <div class="panel-title">
-                        <i class="fa-solid fa-file-signature"></i> Yeni Poliçe Kaydı
-                    </div>
-                    <form id="policy-form">
-                        <div class="form-group">
-                            <label>Müşteri Adı Soyadı / Unvanı</label>
-                            <input type="text" id="p-client" class="form-control" required placeholder="Örn: Ahmet Yılmaz">
-                        </div>
-                        <div class="form-group">
-                            <label>Poliçe No</label>
-                            <input type="text" id="p-no" class="form-control" required placeholder="Örn: 38291023">
-                        </div>
-                        <div class="form-group">
-                            <label>Sigorta Şirketi</label>
-                            <input type="text" id="p-company" class="form-control" placeholder="Örn: Türkiye Sigorta">
-                        </div>
-                        <div class="form-group">
-                            <label>Poliçe Toplam Tutarı (₺)</label>
-                            <input type="number" id="p-amount" step="0.01" min="1" class="form-control" required placeholder="0.00">
-                        </div>
-                        <div class="form-group">
-                            <label>Taksit Sayısı</label>
-                            <select id="p-count" class="form-control">
-                                <option value="1">Peşin (Tek Çekim / Nakit)</option>
-                                <option value="2">2 Taksit</option>
-                                <option value="3">3 Taksit</option>
-                                <option value="4">4 Taksit</option>
-                                <option value="6">6 Taksit</option>
-                                <option value="9">9 Taksit</option>
-                                <option value="12">12 Taksit</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>İlk Taksit Vade Tarihi</label>
-                            <input type="date" id="p-first-date" class="form-control" required>
-                        </div>
-                        <button type="submit" class="btn-primary-btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
-                            Poliçeyi & Taksitleri Oluştur
-                        </button>
-                    </form>
-                </div>
-
-                <div class="card-panel">
-                    <div class="panel-title">
-                        <i class="fa-solid fa-folder-open"></i> Poliçe Borç Listesi
-                    </div>
-
-                    <div class="filter-bar">
-                        <input type="text" id="search-policy" class="form-control" placeholder="Müşteri veya Poliçe No Ara..." style="flex: 1;" onkeyup="renderPolicies()">
-                    </div>
-
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Müşteri</th>
-                                    <th>Poliçe No / Şirket</th>
-                                    <th>Toplam Tutar</th>
-                                    <th>Kalan Borç</th>
-                                    <th>İşlemler</th>
-                                </tr>
-                            </thead>
-                            <tbody id="policy-list"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+        <div class="row2">
+          <div class="f"><label>Taksit</label><select id="p-count"><option value="1">Peşin</option><option>2</option><option>3</option><option>4</option><option>6</option><option>9</option><option>12</option></select></div>
+          <div class="f"><label>İlk vade</label><input id="p-first" type="date" required></div>
         </div>
-
+        <div class="f"><label>Poliçe bitiş tarihi</label><input id="p-end" type="date"></div>
+        <button class="btn">Poliçeyi ve taksitleri oluştur</button>
+      </form>
     </div>
-</div>
+    <div class="panel">
+      <h2>Poliçeler</h2>
+      <div class="filters">
+        <input type="search" id="p-q" placeholder="Müşteri, poliçe no veya tür ara...">
+        <select id="p-f"><option value="all">Tümü</option><option value="open">Borcu olan</option><option value="late">Gecikmiş</option><option value="closed">Kapanmış</option></select>
+      </div>
+      <div class="tw"><table><thead><tr><th>Müşteri</th><th>Poliçe</th><th>Toplam</th><th>Kalan</th><th></th></tr></thead><tbody id="pl"></tbody></table></div>
+      <div class="acts" style="margin-top:12px"><button class="btn sm ghost" onclick="exportPol()">Excel (CSV) indir</button></div>
+    </div>
+  </div>
+</section>
+
+</div></div>
+<dialog id="dlg"><h2 style="margin-bottom:4px">Acente bilgileri</h2><p style="color:var(--muted);margin-bottom:12px">Makbuz ve vade listesinin üst kısmında görünür.</p><form id="af"></form></dialog>
+<div id="toast"></div>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyCCtOVzMGQ6Taw-0OV8NEd_sNgemEZ1gr8",authDomain:"acente-kasa.firebaseapp.com",projectId:"acente-kasa",
+  storageBucket:"acente-kasa.firebasestorage.app",messagingSenderId:"129440057590",appId:"1:129440057590:web:6cf460352dcacf379044d7"
+});
+const auth=firebase.auth(), db=firebase.firestore();
+let tx=[], pols=[], unsub=[], open=new Set();
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>(n||0).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+' ₺';
+const z=n=>String(n).padStart(2,'0');
+const ymd=d=>`${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;
+const today=()=>ymd(new Date());
+const fd=s=>s?s.split('-').reverse().join('.'):'';
+const daysTo=s=>Math.round((new Date(s+'T00:00')-new Date(today()+'T00:00'))/864e5);
+const addMonths=(s,i)=>{const[y,m,d]=s.split('-').map(Number);const last=new Date(y,m+i,0).getDate();return ymd(new Date(y,m-1+i,Math.min(d,last)))};
+function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',2500)}
+const fail=e=>toast('Hata: '+e.message);
+
+// Tema
+function setTheme(t){document.documentElement.dataset.theme=t;$('theme').textContent=t==='dark'?'☀️':'🌙';try{localStorage.setItem('theme',t)}catch(e){}}
+setTheme((()=>{try{return localStorage.getItem('theme')}catch(e){}})()||'light');
+$('theme').onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
+
+// Sekmeler
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x.id==='t-'+b.dataset.t));
+});
+
+// Giriş
+auth.onAuthStateChanged(u=>{
+  $('login').style.display=u?'none':'block';$('app').style.display=u?'block':'none';
+  if(u){
+    unsub=[
+      db.collection('transactions').onSnapshot(s=>{tx=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.timestamp-a.timestamp);renderKasa();renderPanel()},fail),
+      db.collection('policies').onSnapshot(s=>{pols=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.timestamp-a.timestamp);renderPols();renderPanel()},fail)
+    ];
+  }else{unsub.forEach(f=>f());unsub=[]}
+});
+$('login-form').onsubmit=e=>{e.preventDefault();
+  auth.signInWithEmailAndPassword($('le').value,$('lp').value).catch(()=>{const r=$('lerr');r.style.display='block';r.textContent='E-posta veya şifre hatalı.'})};
+
+$('date').value=$('p-first').value=today();
+$('f-month').value=today().slice(0,7);
+
+// ---------- KASA ----------
+$('tf').onsubmit=e=>{e.preventDefault();
+  db.collection('transactions').add({type:$('type').value,date:$('date').value,amount:parseFloat($('amount').value),category:$('category').value,method:$('method').value,description:$('description').value,timestamp:Date.now()})
+   .then(()=>{toast('Kasaya işlendi');$('tf').reset();$('date').value=today()}).catch(fail)};
+function delTx(id){if(confirm('Bu kasa kaydı silinsin mi?'))db.collection('transactions').doc(id).delete().then(()=>toast('Kayıt silindi')).catch(fail)}
+function kasaFiltered(){
+  const m=$('f-month').value,ty=$('f-type').value,q=$('f-q').value.toLowerCase();
+  return tx.filter(t=>(!m||t.date.startsWith(m))&&(ty==='all'||t.type===ty)&&(!q||(t.description+t.category).toLowerCase().includes(q)));
+}
+function renderKasa(){
+  const f=kasaFiltered();
+  $('tl').innerHTML=f.length?f.map(t=>`<tr><td>${fd(t.date)}</td><td><span class="pill ${t.type==='income'?'p-ok':'p-bad'}">${t.type==='income'?'Gelir':'Gider'}</span></td>
+    <td>${esc(t.category)}<br><small style="color:var(--muted)">${esc(t.method||'')}</small></td><td class="w">${esc(t.description)||'-'}</td>
+    <td class="${t.type==='income'?'ok':'bad'}"><b>${t.type==='income'?'+':'−'}${money(t.amount)}</b></td><td><button class="x" onclick="delTx('${t.id}')">✕</button></td></tr>`).join('')
+    :'<tr><td colspan="6" class="empty">Bu filtreye uygun kayıt yok.</td></tr>';
+  const i=f.filter(t=>t.type==='income').reduce((a,t)=>a+t.amount,0),x=f.filter(t=>t.type==='expense').reduce((a,t)=>a+t.amount,0);
+  $('k-sum').innerHTML=`Listelenen: <span class="ok">Gelir ${money(i)}</span> · <span class="bad">Gider ${money(x)}</span> · Net ${money(i-x)}`;
+}
+['f-month','f-type','f-q'].forEach(id=>$(id).addEventListener('input',renderKasa));
+
+// ---------- POLİÇE ----------
+$('pf').onsubmit=e=>{e.preventDefault();
+  const total=parseFloat($('p-amount').value),n=parseInt($('p-count').value),first=$('p-first').value,each=+(total/n).toFixed(2);
+  const inst=[...Array(n)].map((_,i)=>({id:i+1,number:i+1,dueDate:addMonths(first,i),amount:i===n-1?+(total-each*(n-1)).toFixed(2):each,isPaid:false,paidDate:null}));
+  db.collection('policies').add({client:$('p-client').value.trim(),phone:$('p-phone').value.trim(),policyNo:$('p-no').value.trim(),type:$('p-type').value,company:$('p-company').value.trim(),
+    totalAmount:total,commission:parseFloat($('p-com').value)||0,endDate:$('p-end').value||'',installments:inst,timestamp:Date.now()})
+   .then(()=>{toast('Poliçe oluşturuldu');$('pf').reset();$('p-first').value=today()}).catch(fail)};
+
+function payInst(pid,iid){
+  const p=pols.find(x=>x.id===pid),i=p&&p.installments.find(x=>x.id===iid);
+  if(!i||i.isPaid)return;
+  const mm=prompt(`${p.client} - ${i.number}. taksit (${money(i.amount)}) tahsil edilecek.\nÖdeme yöntemi: Nakit / Kredi Kartı / Havale/EFT`,'Nakit');
+  if(mm===null)return;
+  i.method=['Nakit','Kredi Kartı','Havale/EFT'].find(x=>x.toLowerCase()===mm.trim().toLowerCase())||'Nakit';
+  i.isPaid=true;i.paidDate=today();
+  const b=db.batch();
+  b.update(db.collection('policies').doc(pid),{installments:p.installments});
+  b.set(db.collection('transactions').doc(),{type:'income',date:i.paidDate,amount:i.amount,category:'Müşteri Tahsilatı',method:i.method,
+    description:`${p.client} - Pol No: ${p.policyNo} (${i.number}. taksit)`,timestamp:Date.now()});
+  b.commit().then(()=>{toast('Tahsilat kasaya işlendi');if(confirm('Tahsilat makbuzu oluşturulsun mu?'))receipt(pid,iid)}).catch(fail);
+}
+function delPol(id){if(confirm('Poliçe ve tüm taksitleri silinsin mi?'))db.collection('policies').doc(id).delete().then(()=>toast('Poliçe silindi')).catch(fail)}
+function toggleP(id){open.has(id)?open.delete(id):open.add(id);renderPols()}
+const remaining=p=>p.totalAmount-p.installments.filter(i=>i.isPaid).reduce((a,i)=>a+i.amount,0);
+const isLate=p=>p.installments.some(i=>!i.isPaid&&daysTo(i.dueDate)<0);
+
+function waLink(p,i){
+  let ph=(p.phone||'').replace(/\D/g,'');
+  if(!ph)return '';
+  if(ph.startsWith('0'))ph='9'+ph;else if(ph.length===10)ph='90'+ph;
+  const msg=`Sayın ${p.client}, ${p.policyNo} numaralı ${p.type||''} poliçenizin ${i.number}. taksiti (${money(i.amount)}) ${fd(i.dueDate)} tarihinde vadelidir. Bilgilerinize sunarız.`;
+  return `https://wa.me/${ph}?text=${encodeURIComponent(msg)}`;
+}
+function renderPols(){
+  const q=$('p-q').value.toLowerCase(),fl=$('p-f').value;
+  const f=pols.filter(p=>(p.client+p.policyNo+(p.type||'')).toLowerCase().includes(q)&&(fl==='all'||(fl==='open'&&remaining(p)>0)||(fl==='late'&&isLate(p))||(fl==='closed'&&remaining(p)<=0)));
+  $('pl').innerHTML=f.length?f.map(p=>{
+    const r=remaining(p),paid=p.installments.filter(i=>i.isPaid).length;
+    let h=`<tr><td class="w"><b>${esc(p.client)}</b>${isLate(p)?' <span class="pill p-bad">Gecikmiş</span>':''}<br><small style="color:var(--muted)">${esc(p.phone||'')}</small></td>
+      <td>${esc(p.policyNo)} <span class="pill p-warn">${esc(p.type||'-')}</span><br><small style="color:var(--muted)">${esc(p.company||'-')}${p.endDate?' · Bitiş '+fd(p.endDate):''}</small></td>
+      <td>${money(p.totalAmount)}${p.commission?`<br><small style="color:var(--muted)">Komisyon ${money(p.totalAmount*p.commission/100)}</small>`:''}</td>
+      <td class="${r>0?'bad':'ok'}"><b>${money(r)}</b></td>
+      <td><div class="acts"><button class="btn sm ghost" onclick="toggleP('${p.id}')">Taksitler ${paid}/${p.installments.length}</button><button class="btn sm ghost" onclick="statement('${p.id}')">Vade listesi</button><button class="x" onclick="delPol('${p.id}')">Sil</button></div></td></tr>`;
+    if(open.has(p.id))h+=`<tr><td colspan="5" class="sub"><table>${p.installments.map(i=>{const d=daysTo(i.dueDate),w=waLink(p,i);return `<tr>
+      <td>${i.number}. taksit</td><td>${fd(i.dueDate)}</td><td>${money(i.amount)}</td>
+      <td>${i.isPaid?`<span class="pill p-ok">Ödendi ${fd(i.paidDate)}</span>`:d<0?`<span class="pill p-bad">${-d} gün gecikti</span>`:`<span class="pill p-warn">${d===0?'Bugün':d+' gün kaldı'}</span>`}</td>
+      <td>${i.isPaid?`<button class="btn sm ghost" onclick="receipt('${p.id}',${i.id})">Makbuz</button>`:`<div class="acts"><button class="btn sm" onclick="payInst('${p.id}',${i.id})">Tahsil et</button>${w?`<a class="btn sm wa" style="text-decoration:none" target="_blank" rel="noopener" href="${w}">WhatsApp</a>`:''}</div>`}</td></tr>`}).join('')}</table></td></tr>`;
+    return h}).join(''):'<tr><td colspan="5" class="empty">Poliçe bulunamadı.</td></tr>';
+}
+['p-q','p-f'].forEach(id=>$(id).addEventListener('input',renderPols));
+
+// ---------- PANEL ----------
+function renderPanel(){
+  const m=today().slice(0,7);
+  const inc=tx.filter(t=>t.type==='income'),exp=tx.filter(t=>t.type==='expense'),sum=a=>a.reduce((s,t)=>s+t.amount,0);
+  $('s-bal').textContent=money(sum(inc)-sum(exp));
+  $('s-inc').textContent=money(sum(inc.filter(t=>t.date.startsWith(m))));
+  $('s-exp').textContent=money(sum(exp.filter(t=>t.date.startsWith(m))));
+  $('s-rec').textContent=money(pols.reduce((a,p)=>a+remaining(p),0));
+  const due=[];
+  pols.forEach(p=>p.installments.forEach(i=>{if(!i.isPaid){const d=daysTo(i.dueDate);if(d<=7)due.push({p,i,d})}}));
+  due.sort((a,b)=>a.d-b.d);
+  $('s-late').textContent=money(due.filter(x=>x.d<0).reduce((a,x)=>a+x.i.amount,0));
+  $('due').innerHTML=due.length?due.map(({p,i,d})=>{const w=waLink(p,i);return `<div class="item"><div><b>${esc(p.client)}</b><small>${esc(p.type||'')} ${esc(p.policyNo)} · ${i.number}. taksit · ${fd(i.dueDate)}</small></div>
+    <div class="acts"><span class="pill ${d<0?'p-bad':'p-warn'}">${d<0?-d+' gün gecikti':d===0?'Bugün':d+' gün kaldı'}</span><b>${money(i.amount)}</b>
+    <button class="btn sm" onclick="payInst('${p.id}',${i.id})">Tahsil et</button>${w?`<a class="btn sm wa" style="text-decoration:none" target="_blank" rel="noopener" href="${w}">WhatsApp</a>`:''}</div></div>`}).join(''):'<p class="empty">Yaklaşan veya geciken taksit yok. 🎉</p>';
+  const ren=pols.filter(p=>p.endDate&&daysTo(p.endDate)>=0&&daysTo(p.endDate)<=30).sort((a,b)=>a.endDate.localeCompare(b.endDate));
+  $('ren').innerHTML=ren.length?ren.map(p=>{const d=daysTo(p.endDate),ph=(p.phone||'').replace(/\D/g,'');let l='';
+    if(ph){const n=ph.startsWith('0')?'9'+ph:ph.length===10?'90'+ph:ph;l=`<a class="btn sm wa" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/${n}?text=${encodeURIComponent(`Sayın ${p.client}, ${p.policyNo} numaralı ${p.type||''} poliçeniz ${fd(p.endDate)} tarihinde sona erecektir. Yenileme için bizimle iletişime geçebilirsiniz.`)}">WhatsApp</a>`}
+    return `<div class="item"><div><b>${esc(p.client)}</b><small>${esc(p.type||'')} ${esc(p.policyNo)} · ${esc(p.company||'')}</small></div><div class="acts"><span class="pill p-warn">${d===0?'Bugün bitiyor':d+' gün kaldı'}</span>${l}</div></div>`}).join(''):'<p class="empty">30 gün içinde biten poliçe yok.</p>';
+}
+
+// ---------- ACENTE BİLGİLERİ ----------
+const AF=[['unvan','Acente unvanı'],['vd','Vergi dairesi'],['vno','Vergi no'],['ruhsat','Acente ruhsat / sicil no'],['adres','Adres'],['tel','Telefon'],['mail','E-posta'],['iban','IBAN (isteğe bağlı)'],['yetkili','Yetkili adı soyadı']];
+let agency={};
+try{agency=JSON.parse(localStorage.getItem('agency')||'{}')}catch(e){}
+$('af').innerHTML=AF.map(([k,l])=>`<div class="f"><label>${l}</label><input name="${k}"></div>`).join('')+'<div class="acts"><button class="btn">Kaydet</button><button type="button" class="btn ghost" onclick="$(\'dlg\').close()">Kapat</button></div>';
+const fillAgency=()=>AF.forEach(([k])=>$('af').elements[k].value=agency[k]||'');
+fillAgency();
+$('af').onsubmit=e=>{e.preventDefault();
+  AF.forEach(([k])=>agency[k]=$('af').elements[k].value.trim());
+  try{localStorage.setItem('agency',JSON.stringify(agency))}catch(x){}
+  db.collection('settings').doc('agency').set(agency).then(()=>toast('Acente bilgileri kaydedildi')).catch(()=>toast('Bu cihaza kaydedildi (buluta yazılamadı)'));
+  $('dlg').close()};
+auth.onAuthStateChanged(u=>{if(u)db.collection('settings').doc('agency').get().then(s=>{if(s.exists){agency=s.data();try{localStorage.setItem('agency',JSON.stringify(agency))}catch(e){}fillAgency()}}).catch(()=>{})});
+
+// ---------- BELGE (PDF) ----------
+function yaziyla(n){
+  const b=['','bir','iki','üç','dört','beş','altı','yedi','sekiz','dokuz'],o=['','on','yirmi','otuz','kırk','elli','altmış','yetmiş','seksen','doksan'];
+  const t3=x=>{const r=[],h=Math.floor(x/100);if(h>1)r.push(b[h]);if(h)r.push('yüz');if(x%100>=10)r.push(o[Math.floor(x%100/10)]);if(x%10)r.push(b[x%10]);return r.join(' ')};
+  const tot=Math.round(n*100),l=Math.floor(tot/100),k=tot%100,r=[];
+  const m=Math.floor(l/1e6),th=Math.floor(l%1e6/1e3),u=l%1000;
+  if(m)r.push(t3(m),'milyon');if(th)r.push(th>1?t3(th):'','bin');if(u)r.push(t3(u));if(!l)r.push('sıfır');
+  r.push('Türk Lirası');if(k)r.push(t3(k),'kuruş');
+  return r.filter(Boolean).join(' ').toLocaleUpperCase('tr');
+}
+const DOC_CSS=`@page{size:A4;margin:0}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:12px;padding:16mm;margin:0;line-height:1.45}
+.top{display:flex;justify-content:space-between;gap:20px;border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:16px}
+h1{font-size:17px;margin-bottom:4px}.top p{margin:1px 0;color:#333;font-size:11px}.no{text-align:right}.no b{font-size:16px}
+table{width:100%;border-collapse:collapse;margin:6px 0 12px}th,td{border:1px solid #888;padding:6px 8px;text-align:left}th{background:#eee;font-size:11px}
+.kv td:first-child{width:32%;background:#f5f5f5;font-weight:700}tr{page-break-inside:avoid}
+.big{border:2px solid #111;padding:10px;margin:12px 0;font-size:14px}h3{font-size:13px;margin:14px 0 4px}.late{font-weight:700}
+.sig{display:flex;gap:40px;margin-top:50px}.sig div{flex:1;text-align:center;border-top:1px solid #111;padding-top:6px}
+.note{margin-top:24px;font-size:10px;color:#555;border-top:1px solid #ccc;padding-top:8px}`;
+function printDoc(title,body){
+  const f=document.createElement('iframe');f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+  document.body.appendChild(f);
+  f.contentDocument.open();f.contentDocument.write(`<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${DOC_CSS}</style></head><body>${body}</body></html>`);f.contentDocument.close();
+  setTimeout(()=>{f.contentWindow.focus();f.contentWindow.print();setTimeout(()=>f.remove(),3000)},300);
+}
+function docHead(t,no,dt){
+  const a=agency,j=(arr)=>arr.filter(Boolean).map(esc).join(' | ');
+  return `<div class="top"><div><h1>${esc(a.unvan)}</h1><p>${j([a.vd&&'V.D.: '+a.vd,a.vno&&'V.N.: '+a.vno,a.ruhsat&&'Ruhsat/Sicil No: '+a.ruhsat])}</p><p>${esc(a.adres||'')}</p><p>${j([a.tel&&'Tel: '+a.tel,a.mail])}</p></div>
+  <div class="no"><b>${t}</b><p>Belge No: ${esc(no)}</p><p>Tarih: ${fd(dt)}</p></div></div>`;
+}
+const needAgency=()=>{if(agency.unvan)return false;toast('Önce acente bilgilerini girin');$('dlg').showModal();return true};
+
+async function receipt(pid,iid){
+  if(needAgency())return;
+  const p=pols.find(x=>x.id===pid),i=p&&p.installments.find(x=>x.id===iid);
+  if(!i||!i.isPaid)return;
+  try{
+    if(!i.receiptNo){
+      const ref=db.collection('settings').doc('counter');
+      const n=await db.runTransaction(async t=>{const s=await t.get(ref),v=(s.exists?s.data().receipt||0:0)+1;t.set(ref,{receipt:v},{merge:true});return v});
+      i.receiptNo=`MK-${new Date().getFullYear()}-${String(n).padStart(5,'0')}`;
+      await db.collection('policies').doc(pid).update({installments:p.installments});
+    }
+  }catch(e){return fail(e)}
+  const paid=p.installments.filter(x=>x.isPaid).reduce((a,x)=>a+x.amount,0),left=p.totalAmount-paid,next=p.installments.find(x=>!x.isPaid);
+  printDoc('Makbuz '+i.receiptNo,`${docHead('TAHSİLAT MAKBUZU',i.receiptNo,i.paidDate)}
+  <table class="kv"><tr><td>Ödeyen (müşteri)</td><td>${esc(p.client)}</td></tr>${p.phone?`<tr><td>Telefon</td><td>${esc(p.phone)}</td></tr>`:''}
+  <tr><td>Sigorta şirketi</td><td>${esc(p.company||'-')}</td></tr><tr><td>Poliçe türü / no</td><td>${esc(p.type||'-')} / ${esc(p.policyNo)}</td></tr>
+  <tr><td>Taksit</td><td>${i.number} / ${p.installments.length} (vade: ${fd(i.dueDate)})</td></tr><tr><td>Ödeme yöntemi</td><td>${esc(i.method||'Belirtilmedi')}</td></tr>
+  <tr><td>Tahsilat tarihi</td><td>${fd(i.paidDate)}</td></tr></table>
+  <div class="big"><b>Tahsil edilen tutar: ${money(i.amount)}</b><br>Yalnız: ${yaziyla(i.amount)}</div>
+  <p>Yukarıda bilgileri yazılı poliçenin ${i.number}. taksit bedeli olarak ${money(i.amount)} tutarındaki ödeme, ${esc(agency.unvan)} tarafından tahsil edilmiştir.</p>
+  <h3>Poliçe hesap durumu</h3>
+  <table class="kv"><tr><td>Poliçe toplam tutarı</td><td>${money(p.totalAmount)}</td></tr><tr><td>Bugüne kadar ödenen</td><td>${money(paid)}</td></tr>
+  <tr><td>Kalan borç</td><td>${money(left)}</td></tr><tr><td>Sonraki taksit</td><td>${next?`${next.number}. taksit, ${fd(next.dueDate)}, ${money(next.amount)}`:'Borç kalmamıştır'}</td></tr></table>
+  <div class="sig"><div>Tahsil eden<br>${esc(agency.yetkili||'')}<br>${esc(agency.unvan)}</div><div>Ödeyen<br>${esc(p.client)}</div></div>
+  <p class="note">${agency.iban?'IBAN: '+esc(agency.iban)+'. ':''}Bu belge tahsilat makbuzudur; fatura yerine geçmez. ${new Date().toLocaleString('tr-TR')} tarihinde düzenlenmiştir.</p>`);
+}
+
+function statement(pid){
+  if(needAgency())return;
+  const c=pols.find(x=>x.id===pid);if(!c)return;
+  const key=c.client.trim().toLowerCase(),list=pols.filter(x=>x.client.trim().toLowerCase()===key);
+  const all=list.flatMap(p=>p.installments),sum=a=>a.reduce((s,x)=>s+x.amount,0);
+  const total=list.reduce((s,p)=>s+p.totalAmount,0),paid=sum(all.filter(x=>x.isPaid)),late=sum(all.filter(x=>!x.isPaid&&daysTo(x.dueDate)<0));
+  const now=new Date(),no='VL-'+today().replace(/-/g,'')+'-'+z(now.getHours())+z(now.getMinutes());
+  const tables=list.map(p=>`<h3>${esc(p.type||'Poliçe')} - Poliçe no: ${esc(p.policyNo)} (${esc(p.company||'-')})${p.endDate?' - Bitiş: '+fd(p.endDate):''}</h3>
+  <table><thead><tr><th>Taksit</th><th>Vade tarihi</th><th>Tutar</th><th>Durum</th><th>Makbuz no</th></tr></thead><tbody>${p.installments.map(i=>{const d=daysTo(i.dueDate);
+    return `<tr><td>${i.number}. taksit</td><td>${fd(i.dueDate)}</td><td>${money(i.amount)}</td><td class="${!i.isPaid&&d<0?'late':''}">${i.isPaid?'Ödendi '+fd(i.paidDate):d<0?`Gecikmiş (${-d} gün)`:'Bekliyor'}</td><td>${esc(i.receiptNo||'-')}</td></tr>`}).join('')}</tbody></table>`).join('');
+  printDoc('Vade listesi '+c.client,`${docHead('BORÇ VADE LİSTESİ',no,today())}
+  <table class="kv"><tr><td>Müşteri</td><td>${esc(c.client)}</td></tr>${c.phone?`<tr><td>Telefon</td><td>${esc(c.phone)}</td></tr>`:''}
+  <tr><td>Toplam poliçe tutarı</td><td>${money(total)}</td></tr><tr><td>Ödenen</td><td>${money(paid)}</td></tr>
+  <tr><td>Kalan borç</td><td><b>${money(total-paid)}</b></td></tr><tr><td>Vadesi geçmiş tutar</td><td class="late">${money(late)}</td></tr></table>
+  ${tables}
+  <div class="sig"><div>Düzenleyen<br>${esc(agency.yetkili||'')}<br>${esc(agency.unvan)}</div><div>Müşteri<br>${esc(c.client)}</div></div>
+  <p class="note">${agency.iban?'IBAN: '+esc(agency.iban)+'. ':''}Bu liste ${fd(today())} tarihi itibarıyla düzenlenmiştir. Ödemelerin vadesinde yapılması rica olunur.</p>`);
+}
+
+// ---------- DIŞA AKTARIM ----------
+function csv(name,rows){
+  const s='\uFEFF'+rows.map(r=>r.map(c=>`"${String(c??'').replace(/"/g,'""')}"`).join(';')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s],{type:'text/csv;charset=utf-8;'}));a.download=`${name}_${today()}.csv`;a.click();
+}
+function exportKasa(){const f=kasaFiltered();if(!f.length)return toast('İndirilecek veri yok');
+  csv('Kasa',[['Tarih','Tip','Kategori','Yöntem','Açıklama','Tutar (TL)'],...f.map(t=>[fd(t.date),t.type==='income'?'Gelir':'Gider',t.category,t.method||'',t.description||'',String(t.amount).replace('.',',')])])}
+function exportPol(){if(!pols.length)return toast('İndirilecek veri yok');
+  csv('Policeler',[['Müşteri','Telefon','Poliçe No','Tür','Şirket','Bitiş','Toplam (TL)','Kalan (TL)','Komisyon %'],...pols.map(p=>[p.client,p.phone||'',p.policyNo,p.type||'',p.company||'',fd(p.endDate),String(p.totalAmount).replace('.',','),String(remaining(p)).replace('.',','),p.commission||0])])}
+</script>
+</body>
+</html>
