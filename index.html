@@ -1,629 +1,328 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Acente Kasa & Poliçe Borç Takip Sistemi</title>
-    
-    <!-- Firebase SDK (CDN) -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-
-    <style>
-        :root {
-            --bg-color: #f4f6f9;
-            --card-bg: #ffffff;
-            --text-color: #333333;
-            --primary: #2c3e50;
-            --secondary: #3498db;
-            --success: #27ae60;
-            --warning: #f39c12;
-            --danger: #e74c3c;
-            --border: #e0e0e0;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: var(--bg-color); color: var(--text-color); padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; }
-
-        /* Giriş Ekranı Tasarımı */
-        #login-screen {
-            max-width: 380px;
-            margin: 80px auto;
-            background: #fff;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        #login-screen h2 { border: none; margin-bottom: 20px; color: var(--primary); }
-        #login-screen input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; }
-        #login-error { color: var(--danger); font-size: 13px; margin-top: 10px; display: none; }
-
-        /* Ana Uygulama */
-        #app-screen { display: none; }
-
-        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: #fff; padding: 10px 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .sync-badge { background: #e8f8f5; color: #117a65; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; border: 1px solid #a3e4d7; }
-
-        .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid var(--border); }
-        .tab-btn { padding: 12px 24px; font-weight: bold; background: #e0e0e0; border: none; border-radius: 8px 8px 0 0; cursor: pointer; font-size: 15px; color: #555; transition: 0.2s; }
-        .tab-btn.active { background: var(--primary); color: white; }
-
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-
-        .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .card { background: var(--card-bg); padding: 18px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-left: 5px solid var(--primary); }
-        .card.income { border-left-color: var(--success); }
-        .card.expense { border-left-color: var(--danger); }
-        .card.balance { border-left-color: var(--primary); }
-        .card.receivable { border-left-color: var(--warning); }
-        .card h3 { font-size: 13px; color: #777; text-transform: uppercase; margin-bottom: 5px; }
-        .card .amount { font-size: 22px; font-weight: bold; }
-
-        .income .amount { color: var(--success); }
-        .expense .amount { color: var(--danger); }
-        .balance .amount { color: var(--primary); }
-        .receivable .amount { color: var(--warning); }
-
-        .main-content { display: grid; grid-template-columns: 340px 1fr; gap: 20px; }
-        @media (max-width: 900px) { .main-content { grid-template-columns: 1fr; } }
-
-        .form-section, .list-section { background: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-        h2 { font-size: 18px; margin-bottom: 15px; color: var(--primary); border-bottom: 2px solid var(--bg-color); padding-bottom: 8px; }
-
-        .form-group { margin-bottom: 12px; }
-        .form-group label { display: block; font-size: 13px; margin-bottom: 4px; font-weight: 600; }
-        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 5px; font-size: 14px; }
-
-        .btn { width: 100%; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold; transition: 0.2s; }
-        .btn:hover { opacity: 0.9; }
-        .btn-success { background: var(--success); }
-        .btn-danger { background: var(--danger); }
-        .btn-sm { padding: 4px 8px; font-size: 12px; width: auto; }
-
-        .filter-bar { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
-        .filter-bar input, .filter-bar select { padding: 8px; border: 1px solid var(--border); border-radius: 5px; font-size: 13px; }
-
-        .table-responsive { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--border); }
-        th { background-color: #f8f9fa; color: #555; font-weight: 600; }
-
-        .badge { padding: 3px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; color: white; }
-        .badge-income { background-color: var(--success); }
-        .badge-expense { background-color: var(--danger); }
-        .badge-paid { background-color: var(--success); }
-        .badge-unpaid { background-color: var(--danger); }
-
-        .btn-delete { background: none; border: none; color: var(--danger); cursor: pointer; font-weight: bold; }
-        .export-btn { background: #27ae60; margin-top: 15px; }
-
-        .installments-table { background: #fdfdfd; margin: 5px 0; border: 1px solid var(--border); width: 100%; }
-        .installments-table th { background: #eaeaea; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acente Kasa & Poliçe Takip</title>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<style>
+:root{--bg:#f3f5f8;--card:#fff;--text:#1b2430;--muted:#6b7686;--line:#e4e8ee;--pri:#0f766e;--pri-d:#0b5a54;--ok:#15803d;--warn:#b45309;--bad:#dc2626;--soft:#eef2f6;--r:14px}
+[data-theme=dark]{--bg:#0e141b;--card:#161e28;--text:#e6ebf2;--muted:#8b97a8;--line:#263241;--pri:#2dd4bf;--pri-d:#5eead4;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--soft:#1d2734}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+button,input,select,textarea{font:inherit;color:inherit}
+.wrap{max-width:1240px;margin:0 auto;padding:0 20px 40px}
+#login{max-width:380px;margin:12vh auto;background:var(--card);padding:32px;border-radius:var(--r);border:1px solid var(--line);text-align:center}
+#login h2{margin-bottom:18px}
+#app{display:none}
+header{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line)}
+.bar{max-width:1240px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{font-weight:700;font-size:16px;margin-right:auto}
+nav{display:flex;gap:4px;background:var(--soft);padding:4px;border-radius:10px}
+nav button{border:0;background:none;padding:8px 16px;border-radius:8px;cursor:pointer;color:var(--muted);font-weight:600}
+nav button.on{background:var(--card);color:var(--pri);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.ic{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 11px;cursor:pointer}
+.tab{display:none;padding-top:20px}.tab.on{display:block}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:18px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.stat small{color:var(--muted);font-weight:600}
+.stat b{display:block;font-size:24px;margin-top:6px;letter-spacing:-.5px}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.split{display:grid;grid-template-columns:320px 1fr;gap:18px;align-items:start}
+@media(max-width:900px){.grid2,.split{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.panel h2{font-size:16px;margin-bottom:12px}
+.f{margin-bottom:11px}.f label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px}
+input,select,textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--pri);outline-offset:1px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{border:0;background:var(--pri);color:#fff;padding:10px 14px;border-radius:8px;font-weight:600;cursor:pointer;width:100%}
+[data-theme=dark] .btn{color:#06201d}
+.btn:hover{background:var(--pri-d)}
+.sm{width:auto;padding:5px 10px;font-size:12px}
+.ghost{background:var(--soft);color:var(--text)}.ghost:hover{background:var(--line)}
+.wa{background:#22c55e;color:#fff}.wa:hover{background:#16a34a}
+.x{border:0;background:none;color:var(--bad);cursor:pointer;font-weight:700;padding:4px 8px}
+.filters{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}.filters>*{width:auto;flex:1;min-width:130px}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font-size:12px;font-weight:600}
+td.w{white-space:normal}
+.pill{padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700}
+.p-ok{background:rgba(21,128,61,.14);color:var(--ok)}.p-bad{background:rgba(220,38,38,.14);color:var(--bad)}.p-warn{background:rgba(180,83,9,.15);color:var(--warn)}
+.item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.item:last-child{border:0}.item small{color:var(--muted);display:block}
+.acts{display:flex;gap:6px}
+.empty{color:var(--muted);text-align:center;padding:22px}
+.sub{background:var(--soft)}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:99px;display:none;z-index:9}
+@media print{header,.split>.panel:first-child,.filters,.acts,.x,.btn{display:none!important}}
+</style>
 </head>
 <body>
 
-<!-- GİRİŞ EKRANI -->
-<div id="login-screen">
-    <h2>🔒 Kasa Sistemi Girişi</h2>
-    <form id="login-form">
-        <input type="email" id="login-email" placeholder="E-Posta Adresi" required>
-        <input type="password" id="login-password" placeholder="Şifre" required>
-        <button type="submit" class="btn">Giriş Yap</button>
-        <div id="login-error">Hatalı e-posta veya şifre!</div>
-    </form>
+<div id="login">
+  <h2>🔒 Acente Girişi</h2>
+  <form id="login-form">
+    <div class="f"><input type="email" id="le" placeholder="E-posta" required></div>
+    <div class="f"><input type="password" id="lp" placeholder="Şifre" required></div>
+    <button class="btn">Giriş yap</button>
+    <p id="lerr" class="bad" style="margin-top:10px;display:none"></p>
+  </form>
 </div>
 
-<!-- ANA UYGULAMA EKRANI -->
-<div id="app-screen" class="container">
-    <div class="top-bar">
-        <span class="sync-badge">🟢 Korumalı Bulut Bağlantısı Aktif</span>
-        <button class="btn btn-danger btn-sm" onclick="logout()">Güvenli Çıkış Yap</button>
-    </div>
+<div id="app">
+<header><div class="bar">
+  <span class="brand">🛡️ Acente Kasa & Poliçe</span>
+  <nav>
+    <button class="on" data-t="panel">Panel</button>
+    <button data-t="kasa">Kasa</button>
+    <button data-t="pol">Poliçeler</button>
+  </nav>
+  <button class="ic" id="theme" title="Tema">🌙</button>
+  <button class="ic" onclick="auth.signOut()">Çıkış</button>
+</div></header>
 
-    <!-- Sekmeler -->
-    <div class="nav-tabs">
-        <button class="tab-btn active" onclick="switchTab('kasa')">💼 Günlük Kasa Defteri</button>
-        <button class="tab-btn" onclick="switchTab('borc')">📑 Poliçe Borç & Taksit Takibi</button>
-    </div>
+<div class="wrap">
 
-    <!-- TAB 1: GÜNLÜK KASA DEFTERİ -->
-    <div id="tab-kasa" class="tab-content active">
-        <div class="summary-cards">
-            <div class="card income">
-                <h3>Toplam Gelir</h3>
-                <div class="amount" id="total-income">0,00 ₺</div>
-            </div>
-            <div class="card expense">
-                <h3>Toplam Gider</h3>
-                <div class="amount" id="total-expense">0,00 ₺</div>
-            </div>
-            <div class="card balance">
-                <h3>Kasa Bakiyesi</h3>
-                <div class="amount" id="net-balance">0,00 ₺</div>
-            </div>
+<!-- PANEL -->
+<section id="t-panel" class="tab on">
+  <div class="stats">
+    <div class="stat"><small>Kasa bakiyesi</small><b id="s-bal">0 ₺</b></div>
+    <div class="stat"><small>Bu ay gelir</small><b class="ok" id="s-inc">0 ₺</b></div>
+    <div class="stat"><small>Bu ay gider</small><b class="bad" id="s-exp">0 ₺</b></div>
+    <div class="stat"><small>Toplam alacak</small><b class="warn" id="s-rec">0 ₺</b></div>
+    <div class="stat"><small>Geciken tutar</small><b class="bad" id="s-late">0 ₺</b></div>
+  </div>
+  <div class="grid2">
+    <div class="panel"><h2>Geciken ve 7 gün içinde vadesi gelen taksitler</h2><div id="due"></div></div>
+    <div class="panel"><h2>30 gün içinde biten poliçeler (yenileme)</h2><div id="ren"></div></div>
+  </div>
+</section>
+
+<!-- KASA -->
+<section id="t-kasa" class="tab">
+  <div class="split">
+    <div class="panel">
+      <h2>Yeni kasa işlemi</h2>
+      <form id="tf">
+        <div class="row2">
+          <div class="f"><label>Tip</label><select id="type"><option value="income">Gelir (+)</option><option value="expense">Gider (−)</option></select></div>
+          <div class="f"><label>Tarih</label><input type="date" id="date" required></div>
         </div>
-
-        <div class="main-content">
-            <div class="form-section">
-                <h2>Yeni Kasa İşlemi</h2>
-                <form id="transaction-form">
-                    <div class="form-group">
-                        <label for="type">İşlem Tipi</label>
-                        <select id="type" required>
-                            <option value="income">Gelir (+)</option>
-                            <option value="expense">Gider (-)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="date">Tarih</label>
-                        <input type="date" id="date" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="amount">Tutar (₺)</label>
-                        <input type="number" id="amount" step="0.01" min="0.01" placeholder="0.00" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="category">Kategori</label>
-                        <select id="category" required>
-                            <option value="Müşteri Tahsilatı">Müşteri Tahsilatı</option>
-                            <option value="Poliçe Peşinatı">Poliçe Peşinatı</option>
-                            <option value="Komisyon Geliri">Komisyon Geliri</option>
-                            <option value="Fatura Ödemesi">Fatura Ödemesi</option>
-                            <option value="Şirket Cari Ödemesi">Şirket Cari Ödemesi</option>
-                            <option value="Personel / Maaş">Personel / Maaş</option>
-                            <option value="Kira / Aidat">Kira / Aidat</option>
-                            <option value="Diğer">Diğer</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="description">Açıklama</label>
-                        <textarea id="description" rows="2" placeholder="İşlem detayı..."></textarea>
-                    </div>
-                    <button type="submit" class="btn">Kasaya İşle</button>
-                </form>
-            </div>
-
-            <div class="list-section">
-                <h2>Kasa Hareketleri</h2>
-                <div class="filter-bar">
-                    <input type="date" id="filter-date">
-                    <select id="filter-type">
-                        <option value="all">Tüm Tipler</option>
-                        <option value="income">Sadece Gelirler</option>
-                        <option value="expense">Sadece Giderler</option>
-                    </select>
-                    <button class="btn btn-sm" onclick="resetKasaFilters()">Temizle</button>
-                </div>
-
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Tarih</th>
-                                <th>Tip</th>
-                                <th>Kategori</th>
-                                <th>Açıklama</th>
-                                <th>Tutar</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody id="transaction-list"></tbody>
-                    </table>
-                </div>
-                <button class="btn export-btn" onclick="exportKasaCSV()">Excel (CSV) İndir</button>
-            </div>
+        <div class="f"><label>Tutar (₺)</label><input type="number" id="amount" step="0.01" min="0.01" required></div>
+        <div class="row2">
+          <div class="f"><label>Kategori</label><select id="category">
+            <option>Müşteri Tahsilatı</option><option>Poliçe Peşinatı</option><option>Komisyon Geliri</option><option>Fatura Ödemesi</option><option>Şirket Cari Ödemesi</option><option>Personel / Maaş</option><option>Kira / Aidat</option><option>Diğer</option></select></div>
+          <div class="f"><label>Ödeme yöntemi</label><select id="method"><option>Nakit</option><option>Kredi Kartı</option><option>Havale/EFT</option></select></div>
         </div>
+        <div class="f"><label>Açıklama</label><textarea id="description" rows="2"></textarea></div>
+        <button class="btn">Kasaya işle</button>
+      </form>
     </div>
-
-    <!-- TAB 2: POLİÇE BORÇ & TAKSİT TAKİBİ -->
-    <div id="tab-borc" class="tab-content">
-        <div class="summary-cards">
-            <div class="card receivable">
-                <h3>Toplam Müşteri Alacağı</h3>
-                <div class="amount" id="total-receivable">0,00 ₺</div>
-            </div>
-        </div>
-
-        <div class="main-content">
-            <div class="form-section">
-                <h2>Yeni Poliçe Borç Kaydı</h2>
-                <form id="policy-form">
-                    <div class="form-group">
-                        <label for="p-client">Müşteri Adı Soyadı / Unvanı</label>
-                        <input type="text" id="p-client" required placeholder="Örn: Ahmet Yılmaz">
-                    </div>
-                    <div class="form-group">
-                        <label for="p-no">Poliçe No</label>
-                        <input type="text" id="p-no" required placeholder="Örn: 38291023">
-                    </div>
-                    <div class="form-group">
-                        <label for="p-company">Sigorta Şirketi</label>
-                        <input type="text" id="p-company" placeholder="Örn: Türkiye Sigorta">
-                    </div>
-                    <div class="form-group">
-                        <label for="p-amount">Poliçe Toplam Tutarı (₺)</label>
-                        <input type="number" id="p-amount" step="0.01" min="1" required placeholder="0.00">
-                    </div>
-                    <div class="form-group">
-                        <label for="p-count">Taksit Sayısı</label>
-                        <select id="p-count">
-                            <option value="1">Peşin (Tek Çekim / Nakit)</option>
-                            <option value="2">2 Taksit</option>
-                            <option value="3">3 Taksit</option>
-                            <option value="4">4 Taksit</option>
-                            <option value="6">6 Taksit</option>
-                            <option value="9">9 Taksit</option>
-                            <option value="12">12 Taksit</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="p-first-date">İlk Taksit Vade Tarihi</label>
-                        <input type="date" id="p-first-date" required>
-                    </div>
-                    <button type="submit" class="btn btn-success">Poliçeyi & Taksitleri Oluştur</button>
-                </form>
-            </div>
-
-            <div class="list-section">
-                <h2>Poliçe Borç Listesi</h2>
-                <div class="filter-bar">
-                    <input type="text" id="search-policy" placeholder="Müşteri veya Poliçe No Ara..." style="flex: 1;" onkeyup="renderPolicies()">
-                </div>
-
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Müşteri</th>
-                                <th>Poliçe No / Şirket</th>
-                                <th>Toplam Tutar</th>
-                                <th>Kalan Borç</th>
-                                <th>İşlemler</th>
-                            </tr>
-                        </thead>
-                        <tbody id="policy-list"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+    <div class="panel">
+      <h2>Kasa hareketleri</h2>
+      <div class="filters">
+        <input type="month" id="f-month">
+        <select id="f-type"><option value="all">Tüm tipler</option><option value="income">Gelirler</option><option value="expense">Giderler</option></select>
+        <input type="search" id="f-q" placeholder="Ara...">
+      </div>
+      <div class="tw"><table><thead><tr><th>Tarih</th><th>Tip</th><th>Kategori</th><th>Açıklama</th><th>Tutar</th><th></th></tr></thead><tbody id="tl"></tbody></table></div>
+      <p id="k-sum" style="margin:12px 0;font-weight:600"></p>
+      <div class="acts"><button class="btn sm ghost" onclick="exportKasa()">Excel (CSV) indir</button><button class="btn sm ghost" onclick="print()">Yazdır</button></div>
     </div>
-</div>
+  </div>
+</section>
+
+<!-- POLİÇE -->
+<section id="t-pol" class="tab">
+  <div class="split">
+    <div class="panel">
+      <h2>Yeni poliçe kaydı</h2>
+      <form id="pf">
+        <div class="f"><label>Müşteri</label><input id="p-client" required></div>
+        <div class="f"><label>Telefon (WhatsApp için)</label><input id="p-phone" type="tel" placeholder="05xx xxx xx xx"></div>
+        <div class="row2">
+          <div class="f"><label>Poliçe no</label><input id="p-no" required></div>
+          <div class="f"><label>Tür</label><select id="p-type"><option>Trafik</option><option>Kasko</option><option>DASK</option><option>Konut</option><option>Sağlık</option><option>Hayat</option><option>İşyeri</option><option>Seyahat</option><option>Diğer</option></select></div>
+        </div>
+        <div class="f"><label>Sigorta şirketi</label><input id="p-company"></div>
+        <div class="row2">
+          <div class="f"><label>Toplam tutar (₺)</label><input id="p-amount" type="number" step="0.01" min="1" required></div>
+          <div class="f"><label>Komisyon (%)</label><input id="p-com" type="number" step="0.1" min="0" max="100"></div>
+        </div>
+        <div class="row2">
+          <div class="f"><label>Taksit</label><select id="p-count"><option value="1">Peşin</option><option>2</option><option>3</option><option>4</option><option>6</option><option>9</option><option>12</option></select></div>
+          <div class="f"><label>İlk vade</label><input id="p-first" type="date" required></div>
+        </div>
+        <div class="f"><label>Poliçe bitiş tarihi</label><input id="p-end" type="date"></div>
+        <button class="btn">Poliçeyi ve taksitleri oluştur</button>
+      </form>
+    </div>
+    <div class="panel">
+      <h2>Poliçeler</h2>
+      <div class="filters">
+        <input type="search" id="p-q" placeholder="Müşteri, poliçe no veya tür ara...">
+        <select id="p-f"><option value="all">Tümü</option><option value="open">Borcu olan</option><option value="late">Gecikmiş</option><option value="closed">Kapanmış</option></select>
+      </div>
+      <div class="tw"><table><thead><tr><th>Müşteri</th><th>Poliçe</th><th>Toplam</th><th>Kalan</th><th></th></tr></thead><tbody id="pl"></tbody></table></div>
+      <div class="acts" style="margin-top:12px"><button class="btn sm ghost" onclick="exportPol()">Excel (CSV) indir</button></div>
+    </div>
+  </div>
+</section>
+
+</div></div>
+<div id="toast"></div>
 
 <script>
-    // Firebase Kurulumu
-    const firebaseConfig = {
-        apiKey: "AIzaSyCCtOVzMGQ6Taw-0OV8NEd_sNgemEZ1gr8",
-        authDomain: "acente-kasa.firebaseapp.com",
-        projectId: "acente-kasa",
-        storageBucket: "acente-kasa.firebasestorage.app",
-        messagingSenderId: "129440057590",
-        appId: "1:129440057590:web:6cf460352dcacf379044d7",
-        measurementId: "G-1XVVGJ9EDH"
-    };
+firebase.initializeApp({
+  apiKey:"AIzaSyCCtOVzMGQ6Taw-0OV8NEd_sNgemEZ1gr8",authDomain:"acente-kasa.firebaseapp.com",projectId:"acente-kasa",
+  storageBucket:"acente-kasa.firebasestorage.app",messagingSenderId:"129440057590",appId:"1:129440057590:web:6cf460352dcacf379044d7"
+});
+const auth=firebase.auth(), db=firebase.firestore();
+let tx=[], pols=[], unsub=[], open=new Set();
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>(n||0).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+' ₺';
+const z=n=>String(n).padStart(2,'0');
+const ymd=d=>`${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;
+const today=()=>ymd(new Date());
+const fd=s=>s?s.split('-').reverse().join('.'):'';
+const daysTo=s=>Math.round((new Date(s+'T00:00')-new Date(today()+'T00:00'))/864e5);
+const addMonths=(s,i)=>{const[y,m,d]=s.split('-').map(Number);const last=new Date(y,m+i,0).getDate();return ymd(new Date(y,m-1+i,Math.min(d,last)))};
+function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',2500)}
+const fail=e=>toast('Hata: '+e.message);
 
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+// Tema
+function setTheme(t){document.documentElement.dataset.theme=t;$('theme').textContent=t==='dark'?'☀️':'🌙';try{localStorage.setItem('theme',t)}catch(e){}}
+setTheme((()=>{try{return localStorage.getItem('theme')}catch(e){}})()||'light');
+$('theme').onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
 
-    let transactions = [];
-    let policies = [];
-    let unsubscribeTransactions = null;
-    let unsubscribePolicies = null;
+// Sekmeler
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x.id==='t-'+b.dataset.t));
+});
 
-    // Oturum Durumu Kontrolü
-    auth.onAuthStateChanged(user => {
-        if (user) {
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('app-screen').style.display = 'block';
-            startListeners();
-        } else {
-            document.getElementById('login-screen').style.display = 'block';
-            document.getElementById('app-screen').style.display = 'none';
-            if(unsubscribeTransactions) unsubscribeTransactions();
-            if(unsubscribePolicies) unsubscribePolicies();
-        }
-    });
+// Giriş
+auth.onAuthStateChanged(u=>{
+  $('login').style.display=u?'none':'block';$('app').style.display=u?'block':'none';
+  if(u){
+    unsub=[
+      db.collection('transactions').onSnapshot(s=>{tx=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.timestamp-a.timestamp);renderKasa();renderPanel()},fail),
+      db.collection('policies').onSnapshot(s=>{pols=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.timestamp-a.timestamp);renderPols();renderPanel()},fail)
+    ];
+  }else{unsub.forEach(f=>f());unsub=[]}
+});
+$('login-form').onsubmit=e=>{e.preventDefault();
+  auth.signInWithEmailAndPassword($('le').value,$('lp').value).catch(()=>{const r=$('lerr');r.style.display='block';r.textContent='E-posta veya şifre hatalı.'})};
 
-    // Giriş Yapma İşlemi
-    document.getElementById('login-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const email = document.getElementById('login-email').value;
-        const pass = document.getElementById('login-password').value;
+$('date').value=$('p-first').value=today();
+$('f-month').value=today().slice(0,7);
 
-        auth.signInWithEmailAndPassword(email, pass).catch(error => {
-            const errDiv = document.getElementById('login-error');
-            errDiv.style.display = 'block';
-            errDiv.innerText = "Giriş Başarısız: " + error.message;
-        });
-    });
+// ---------- KASA ----------
+$('tf').onsubmit=e=>{e.preventDefault();
+  db.collection('transactions').add({type:$('type').value,date:$('date').value,amount:parseFloat($('amount').value),category:$('category').value,method:$('method').value,description:$('description').value,timestamp:Date.now()})
+   .then(()=>{toast('Kasaya işlendi');$('tf').reset();$('date').value=today()}).catch(fail)};
+function delTx(id){if(confirm('Bu kasa kaydı silinsin mi?'))db.collection('transactions').doc(id).delete().then(()=>toast('Kayıt silindi')).catch(fail)}
+function kasaFiltered(){
+  const m=$('f-month').value,ty=$('f-type').value,q=$('f-q').value.toLowerCase();
+  return tx.filter(t=>(!m||t.date.startsWith(m))&&(ty==='all'||t.type===ty)&&(!q||(t.description+t.category).toLowerCase().includes(q)));
+}
+function renderKasa(){
+  const f=kasaFiltered();
+  $('tl').innerHTML=f.length?f.map(t=>`<tr><td>${fd(t.date)}</td><td><span class="pill ${t.type==='income'?'p-ok':'p-bad'}">${t.type==='income'?'Gelir':'Gider'}</span></td>
+    <td>${esc(t.category)}<br><small style="color:var(--muted)">${esc(t.method||'')}</small></td><td class="w">${esc(t.description)||'-'}</td>
+    <td class="${t.type==='income'?'ok':'bad'}"><b>${t.type==='income'?'+':'−'}${money(t.amount)}</b></td><td><button class="x" onclick="delTx('${t.id}')">✕</button></td></tr>`).join('')
+    :'<tr><td colspan="6" class="empty">Bu filtreye uygun kayıt yok.</td></tr>';
+  const i=f.filter(t=>t.type==='income').reduce((a,t)=>a+t.amount,0),x=f.filter(t=>t.type==='expense').reduce((a,t)=>a+t.amount,0);
+  $('k-sum').innerHTML=`Listelenen: <span class="ok">Gelir ${money(i)}</span> · <span class="bad">Gider ${money(x)}</span> · Net ${money(i-x)}`;
+}
+['f-month','f-type','f-q'].forEach(id=>$(id).addEventListener('input',renderKasa));
 
-    function logout() {
-        auth.signOut();
-    }
+// ---------- POLİÇE ----------
+$('pf').onsubmit=e=>{e.preventDefault();
+  const total=parseFloat($('p-amount').value),n=parseInt($('p-count').value),first=$('p-first').value,each=+(total/n).toFixed(2);
+  const inst=[...Array(n)].map((_,i)=>({id:i+1,number:i+1,dueDate:addMonths(first,i),amount:i===n-1?+(total-each*(n-1)).toFixed(2):each,isPaid:false,paidDate:null}));
+  db.collection('policies').add({client:$('p-client').value.trim(),phone:$('p-phone').value.trim(),policyNo:$('p-no').value.trim(),type:$('p-type').value,company:$('p-company').value.trim(),
+    totalAmount:total,commission:parseFloat($('p-com').value)||0,endDate:$('p-end').value||'',installments:inst,timestamp:Date.now()})
+   .then(()=>{toast('Poliçe oluşturuldu');$('pf').reset();$('p-first').value=today()}).catch(fail)};
 
-    // Varsayılan Tarihler
-    document.getElementById('date').value = new Date().toISOString().substring(0, 10);
-    document.getElementById('p-first-date').value = new Date().toISOString().substring(0, 10);
+function payInst(pid,iid){
+  const p=pols.find(x=>x.id===pid),i=p&&p.installments.find(x=>x.id===iid);
+  if(!i||i.isPaid)return;
+  if(!confirm(`${p.client} - ${i.number}. taksit (${money(i.amount)}) tahsil edilsin mi?`))return;
+  i.isPaid=true;i.paidDate=today();
+  const b=db.batch();
+  b.update(db.collection('policies').doc(pid),{installments:p.installments});
+  b.set(db.collection('transactions').doc(),{type:'income',date:i.paidDate,amount:i.amount,category:'Müşteri Tahsilatı',method:'Nakit',
+    description:`${p.client} - Pol No: ${p.policyNo} (${i.number}. taksit)`,timestamp:Date.now()});
+  b.commit().then(()=>toast('Tahsilat kasaya işlendi')).catch(fail);
+}
+function delPol(id){if(confirm('Poliçe ve tüm taksitleri silinsin mi?'))db.collection('policies').doc(id).delete().then(()=>toast('Poliçe silindi')).catch(fail)}
+function toggleP(id){open.has(id)?open.delete(id):open.add(id);renderPols()}
+const remaining=p=>p.totalAmount-p.installments.filter(i=>i.isPaid).reduce((a,i)=>a+i.amount,0);
+const isLate=p=>p.installments.some(i=>!i.isPaid&&daysTo(i.dueDate)<0);
 
-    // Canlı Veri Dinleme
-    function startListeners() {
-        unsubscribeTransactions = db.collection("transactions").onSnapshot((snapshot) => {
-            transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            transactions.sort((a,b) => b.timestamp - a.timestamp);
-            renderKasa();
-        });
+function waLink(p,i){
+  let ph=(p.phone||'').replace(/\D/g,'');
+  if(!ph)return '';
+  if(ph.startsWith('0'))ph='9'+ph;else if(ph.length===10)ph='90'+ph;
+  const msg=`Sayın ${p.client}, ${p.policyNo} numaralı ${p.type||''} poliçenizin ${i.number}. taksiti (${money(i.amount)}) ${fd(i.dueDate)} tarihinde vadelidir. Bilgilerinize sunarız.`;
+  return `https://wa.me/${ph}?text=${encodeURIComponent(msg)}`;
+}
+function renderPols(){
+  const q=$('p-q').value.toLowerCase(),fl=$('p-f').value;
+  const f=pols.filter(p=>(p.client+p.policyNo+(p.type||'')).toLowerCase().includes(q)&&(fl==='all'||(fl==='open'&&remaining(p)>0)||(fl==='late'&&isLate(p))||(fl==='closed'&&remaining(p)<=0)));
+  $('pl').innerHTML=f.length?f.map(p=>{
+    const r=remaining(p),paid=p.installments.filter(i=>i.isPaid).length;
+    let h=`<tr><td class="w"><b>${esc(p.client)}</b>${isLate(p)?' <span class="pill p-bad">Gecikmiş</span>':''}<br><small style="color:var(--muted)">${esc(p.phone||'')}</small></td>
+      <td>${esc(p.policyNo)} <span class="pill p-warn">${esc(p.type||'-')}</span><br><small style="color:var(--muted)">${esc(p.company||'-')}${p.endDate?' · Bitiş '+fd(p.endDate):''}</small></td>
+      <td>${money(p.totalAmount)}${p.commission?`<br><small style="color:var(--muted)">Komisyon ${money(p.totalAmount*p.commission/100)}</small>`:''}</td>
+      <td class="${r>0?'bad':'ok'}"><b>${money(r)}</b></td>
+      <td><div class="acts"><button class="btn sm ghost" onclick="toggleP('${p.id}')">Taksitler ${paid}/${p.installments.length}</button><button class="x" onclick="delPol('${p.id}')">Sil</button></div></td></tr>`;
+    if(open.has(p.id))h+=`<tr><td colspan="5" class="sub"><table>${p.installments.map(i=>{const d=daysTo(i.dueDate),w=waLink(p,i);return `<tr>
+      <td>${i.number}. taksit</td><td>${fd(i.dueDate)}</td><td>${money(i.amount)}</td>
+      <td>${i.isPaid?`<span class="pill p-ok">Ödendi ${fd(i.paidDate)}</span>`:d<0?`<span class="pill p-bad">${-d} gün gecikti</span>`:`<span class="pill p-warn">${d===0?'Bugün':d+' gün kaldı'}</span>`}</td>
+      <td>${i.isPaid?'':`<div class="acts"><button class="btn sm" onclick="payInst('${p.id}',${i.id})">Tahsil et</button>${w?`<a class="btn sm wa" style="text-decoration:none" target="_blank" rel="noopener" href="${w}">WhatsApp</a>`:''}</div>`}</td></tr>`}).join('')}</table></td></tr>`;
+    return h}).join(''):'<tr><td colspan="5" class="empty">Poliçe bulunamadı.</td></tr>';
+}
+['p-q','p-f'].forEach(id=>$(id).addEventListener('input',renderPols));
 
-        unsubscribePolicies = db.collection("policies").onSnapshot((snapshot) => {
-            policies = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            policies.sort((a,b) => b.timestamp - a.timestamp);
-            renderPolicies();
-        });
-    }
+// ---------- PANEL ----------
+function renderPanel(){
+  const m=today().slice(0,7);
+  const inc=tx.filter(t=>t.type==='income'),exp=tx.filter(t=>t.type==='expense'),sum=a=>a.reduce((s,t)=>s+t.amount,0);
+  $('s-bal').textContent=money(sum(inc)-sum(exp));
+  $('s-inc').textContent=money(sum(inc.filter(t=>t.date.startsWith(m))));
+  $('s-exp').textContent=money(sum(exp.filter(t=>t.date.startsWith(m))));
+  $('s-rec').textContent=money(pols.reduce((a,p)=>a+remaining(p),0));
+  const due=[];
+  pols.forEach(p=>p.installments.forEach(i=>{if(!i.isPaid){const d=daysTo(i.dueDate);if(d<=7)due.push({p,i,d})}}));
+  due.sort((a,b)=>a.d-b.d);
+  $('s-late').textContent=money(due.filter(x=>x.d<0).reduce((a,x)=>a+x.i.amount,0));
+  $('due').innerHTML=due.length?due.map(({p,i,d})=>{const w=waLink(p,i);return `<div class="item"><div><b>${esc(p.client)}</b><small>${esc(p.type||'')} ${esc(p.policyNo)} · ${i.number}. taksit · ${fd(i.dueDate)}</small></div>
+    <div class="acts"><span class="pill ${d<0?'p-bad':'p-warn'}">${d<0?-d+' gün gecikti':d===0?'Bugün':d+' gün kaldı'}</span><b>${money(i.amount)}</b>
+    <button class="btn sm" onclick="payInst('${p.id}',${i.id})">Tahsil et</button>${w?`<a class="btn sm wa" style="text-decoration:none" target="_blank" rel="noopener" href="${w}">WhatsApp</a>`:''}</div></div>`}).join(''):'<p class="empty">Yaklaşan veya geciken taksit yok. 🎉</p>';
+  const ren=pols.filter(p=>p.endDate&&daysTo(p.endDate)>=0&&daysTo(p.endDate)<=30).sort((a,b)=>a.endDate.localeCompare(b.endDate));
+  $('ren').innerHTML=ren.length?ren.map(p=>{const d=daysTo(p.endDate),ph=(p.phone||'').replace(/\D/g,'');let l='';
+    if(ph){const n=ph.startsWith('0')?'9'+ph:ph.length===10?'90'+ph:ph;l=`<a class="btn sm wa" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/${n}?text=${encodeURIComponent(`Sayın ${p.client}, ${p.policyNo} numaralı ${p.type||''} poliçeniz ${fd(p.endDate)} tarihinde sona erecektir. Yenileme için bizimle iletişime geçebilirsiniz.`)}">WhatsApp</a>`}
+    return `<div class="item"><div><b>${esc(p.client)}</b><small>${esc(p.type||'')} ${esc(p.policyNo)} · ${esc(p.company||'')}</small></div><div class="acts"><span class="pill p-warn">${d===0?'Bugün bitiyor':d+' gün kaldı'}</span>${l}</div></div>`}).join(''):'<p class="empty">30 gün içinde biten poliçe yok.</p>';
+}
 
-    // Sekmeler
-    function switchTab(tabName) {
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-
-        if(tabName === 'kasa') {
-            document.querySelectorAll('.tab-btn')[0].classList.add('active');
-            document.getElementById('tab-kasa').classList.add('active');
-        } else {
-            document.querySelectorAll('.tab-btn')[1].classList.add('active');
-            document.getElementById('tab-borc').classList.add('active');
-        }
-    }
-
-    // --- KASA İŞLEMLERİ ---
-    document.getElementById('transaction-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const transaction = {
-            type: document.getElementById('type').value,
-            date: document.getElementById('date').value,
-            amount: parseFloat(document.getElementById('amount').value),
-            category: document.getElementById('category').value,
-            description: document.getElementById('description').value,
-            timestamp: Date.now()
-        };
-
-        db.collection("transactions").add(transaction);
-        this.reset();
-        document.getElementById('date').value = new Date().toISOString().substring(0, 10);
-    });
-
-    function deleteTransaction(id) {
-        if(confirm('Bu kasa kaydını silmek istediğinize emin misiniz?')) {
-            db.collection("transactions").doc(id).delete();
-        }
-    }
-
-    function resetKasaFilters() {
-        document.getElementById('filter-date').value = '';
-        document.getElementById('filter-type').value = 'all';
-        renderKasa();
-    }
-
-    function renderKasa() {
-        const filterDate = document.getElementById('filter-date').value;
-        const filterType = document.getElementById('filter-type').value;
-
-        let filtered = transactions.filter(t => {
-            const matchesDate = !filterDate || t.date === filterDate;
-            const matchesType = filterType === 'all' || t.type === filterType;
-            return matchesDate && matchesType;
-        });
-
-        const list = document.getElementById('transaction-list');
-        list.innerHTML = '';
-
-        if(filtered.length === 0) {
-            list.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">Kayıt bulunamadı.</td></tr>';
-        } else {
-            filtered.forEach(t => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${formatDate(t.date)}</td>
-                    <td><span class="badge ${t.type === 'income' ? 'badge-income' : 'badge-expense'}">${t.type === 'income' ? 'Gelir' : 'Gider'}</span></td>
-                    <td>${t.category}</td>
-                    <td>${t.description || '-'}</td>
-                    <td style="font-weight:bold; color: ${t.type === 'income' ? 'var(--success)' : 'var(--danger)'}">
-                        ${t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString('tr-TR', {minimumFractionDigits: 2})} ₺
-                    </td>
-                    <td><button class="btn-delete" onclick="deleteTransaction('${t.id}')">✕</button></td>
-                `;
-                list.appendChild(tr);
-            });
-        }
-
-        const totalIncome = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
-        const totalExpense = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
-        
-        document.getElementById('total-income').innerText = totalIncome.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + ' ₺';
-        document.getElementById('total-expense').innerText = totalExpense.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + ' ₺';
-        document.getElementById('net-balance').innerText = (totalIncome - totalExpense).toLocaleString('tr-TR', {minimumFractionDigits: 2}) + ' ₺';
-    }
-
-    // --- POLİÇE İŞLEMLERİ ---
-    document.getElementById('policy-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const client = document.getElementById('p-client').value;
-        const policyNo = document.getElementById('p-no').value;
-        const company = document.getElementById('p-company').value;
-        const totalAmount = parseFloat(document.getElementById('p-amount').value);
-        const count = parseInt(document.getElementById('p-count').value);
-        const firstDate = new Date(document.getElementById('p-first-date').value);
-
-        const installmentAmount = +(totalAmount / count).toFixed(2);
-        let generatedInstallments = [];
-
-        for(let i = 0; i < count; i++) {
-            let dueDate = new Date(firstDate);
-            dueDate.setMonth(dueDate.getMonth() + i);
-            let currentAmount = (i === count - 1) ? +(totalAmount - (installmentAmount * (count - 1))).toFixed(2) : installmentAmount;
-
-            generatedInstallments.push({
-                id: i + 1,
-                number: i + 1,
-                dueDate: dueDate.toISOString().substring(0, 10),
-                amount: currentAmount,
-                isPaid: false,
-                paidDate: null
-            });
-        }
-
-        const policy = {
-            client: client,
-            policyNo: policyNo,
-            company: company,
-            totalAmount: totalAmount,
-            installments: generatedInstallments,
-            timestamp: Date.now()
-        };
-
-        db.collection("policies").add(policy);
-        this.reset();
-        document.getElementById('p-first-date').value = new Date().toISOString().substring(0, 10);
-    });
-
-    function payInstallment(policyId, installmentId) {
-        const policy = policies.find(p => p.id === policyId);
-        if(!policy) return;
-
-        const inst = policy.installments.find(i => i.id === installmentId);
-        if(!inst || inst.isPaid) return;
-
-        if(confirm(`${policy.client} isimli müşterinin ${inst.amount} ₺ tutarındaki ${inst.number}. taksitini tahsil etmek istiyor musunuz?`)) {
-            inst.isPaid = true;
-            inst.paidDate = new Date().toISOString().substring(0, 10);
-
-            db.collection("policies").doc(policyId).update({
-                installments: policy.installments
-            });
-
-            db.collection("transactions").add({
-                type: 'income',
-                date: inst.paidDate,
-                amount: inst.amount,
-                category: 'Müşteri Tahsilatı',
-                description: `${policy.client} - Pol No: ${policy.policyNo} (${inst.number}. Taksit Tahsilatı)`,
-                timestamp: Date.now()
-            });
-        }
-    }
-
-    function deletePolicy(id) {
-        if(confirm('Bu poliçeyi ve bağlı tüm taksitleri silmek istediğinize emin misiniz?')) {
-            db.collection("policies").doc(id).delete();
-        }
-    }
-
-    function renderPolicies() {
-        const query = document.getElementById('search-policy').value.toLowerCase();
-        const list = document.getElementById('policy-list');
-        list.innerHTML = '';
-
-        let totalReceivable = 0;
-
-        let filtered = policies.filter(p => 
-            p.client.toLowerCase().includes(query) || p.policyNo.toLowerCase().includes(query)
-        );
-
-        if(filtered.length === 0) {
-            list.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888;">Poliçe kaydı bulunamadı.</td></tr>';
-        } else {
-            filtered.forEach(p => {
-                const paidAmount = p.installments.filter(i => i.isPaid).reduce((acc, i) => acc + i.amount, 0);
-                const remaining = p.totalAmount - paidAmount;
-                totalReceivable += remaining;
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><strong>${p.client}</strong></td>
-                    <td>${p.policyNo} <br><small style="color:#777">${p.company || '-'}</small></td>
-                    <td>${p.totalAmount.toLocaleString('tr-TR', {minimumFractionDigits: 2})} ₺</td>
-                    <td style="font-weight:bold; color:${remaining > 0 ? 'var(--danger)' : 'var(--success)'}">
-                        ${remaining.toLocaleString('tr-TR', {minimumFractionDigits: 2})} ₺
-                    </td>
-                    <td>
-                        <button class="btn btn-sm" onclick="toggleInstallments('${p.id}')">Taksitler (${p.installments.filter(i=>i.isPaid).length}/${p.installments.length})</button>
-                        <button class="btn-delete" style="margin-left:8px;" onclick="deletePolicy('${p.id}')">Sil</button>
-                    </td>
-                `;
-                list.appendChild(tr);
-
-                const detailTr = document.createElement('tr');
-                detailTr.id = `details-${p.id}`;
-                detailTr.style.display = 'none';
-                
-                let instRows = p.installments.map(i => `
-                    <tr>
-                        <td>${i.number}. Taksit</td>
-                        <td>${formatDate(i.dueDate)}</td>
-                        <td>${i.amount.toLocaleString('tr-TR', {minimumFractionDigits: 2})} ₺</td>
-                        <td>
-                            ${i.isPaid 
-                                ? `<span class="badge badge-paid">Ödendi (${formatDate(i.paidDate)})</span>` 
-                                : `<span class="badge badge-unpaid">Bekliyor</span>`}
-                        </td>
-                        <td>
-                            ${!i.isPaid 
-                                ? `<button class="btn btn-sm btn-success" onclick="payInstallment('${p.id}',${i.id})">Tahsil Et</button>` 
-                                : '-'}
-                        </td>
-                    </tr>
-                `).join('');
-
-                detailTr.innerHTML = `
-                    <td colspan="5" style="background:#f0f4f8; padding:10px;">
-                        <table class="installments-table">
-                            <thead>
-                                <tr><th>Taksit</th><th>Vade Tarihi</th><th>Tutar</th><th>Durum</th><th>İşlem</th></tr>
-                            </thead>
-                            <tbody>${instRows}</tbody>
-                        </table>
-                    </td>
-                `;
-                list.appendChild(detailTr);
-            });
-        }
-
-        document.getElementById('total-receivable').innerText = totalReceivable.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + ' ₺';
-    }
-
-    function toggleInstallments(policyId) {
-        const el = document.getElementById(`details-${policyId}`);
-        el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
-    }
-
-    function formatDate(dateStr) {
-        if(!dateStr) return '';
-        const parts = dateStr.split('-');
-        return `${parts[2]}.${parts[1]}.${parts[0]}`;
-    }
-
-    function exportKasaCSV() {
-        if(transactions.length === 0) return alert('İndirilecek veri yok.');
-        let csvContent = "\uFEFFTarih;Tip;Kategori;Aciklama;Tutar (TL)\n";
-        transactions.forEach(t => {
-            const safeDesc = (t.description || '').replace(/"/g, '""');
-            csvContent += [formatDate(t.date), t.type === 'income' ? 'Gelir' : 'Gider', `"${t.category}"`, `"${safeDesc}"`, t.amount.toString().replace('.', ',')].join(";") + "\n";
-        });
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `Kasa_Defteri_${new Date().toISOString().substring(0, 10)}.csv`;
-        link.click();
-    }
-
-    document.getElementById('filter-date').addEventListener('change', renderKasa);
-    document.getElementById('filter-type').addEventListener('change', renderKasa);
+// ---------- DIŞA AKTARIM ----------
+function csv(name,rows){
+  const s='\uFEFF'+rows.map(r=>r.map(c=>`"${String(c??'').replace(/"/g,'""')}"`).join(';')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s],{type:'text/csv;charset=utf-8;'}));a.download=`${name}_${today()}.csv`;a.click();
+}
+function exportKasa(){const f=kasaFiltered();if(!f.length)return toast('İndirilecek veri yok');
+  csv('Kasa',[['Tarih','Tip','Kategori','Yöntem','Açıklama','Tutar (TL)'],...f.map(t=>[fd(t.date),t.type==='income'?'Gelir':'Gider',t.category,t.method||'',t.description||'',String(t.amount).replace('.',',')])])}
+function exportPol(){if(!pols.length)return toast('İndirilecek veri yok');
+  csv('Policeler',[['Müşteri','Telefon','Poliçe No','Tür','Şirket','Bitiş','Toplam (TL)','Kalan (TL)','Komisyon %'],...pols.map(p=>[p.client,p.phone||'',p.policyNo,p.type||'',p.company||'',fd(p.endDate),String(p.totalAmount).replace('.',','),String(remaining(p)).replace('.',','),p.commission||0])])}
 </script>
-
 </body>
 </html>
