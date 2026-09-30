@@ -84,6 +84,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
     <button class="on" data-t="panel">Panel</button>
     <button data-t="kasa">Kasa</button>
     <button data-t="pol">Poliçeler</button>
+    <button data-t="mak">Makbuzlar</button>
   </nav>
   <button class="ic" onclick="$('dlg').showModal()">🏢 Acente Bilgileri</button>
   <button class="ic" id="theme" title="Tema">🌙</button>
@@ -138,6 +139,20 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
       <p id="k-sum" style="margin:12px 0;font-weight:600"></p>
       <div class="acts"><button class="btn sm ghost" onclick="exportKasa()">Excel (CSV) indir</button><button class="btn sm ghost" onclick="print()">Yazdır</button></div>
     </div>
+  </div>
+</section>
+
+<!-- MAKBUZLAR -->
+<section id="t-mak" class="tab">
+  <div class="panel">
+    <h2>Makbuz arşivi</h2>
+    <div class="filters">
+      <input type="search" id="m-q" placeholder="Müşteri, poliçe no veya makbuz no ara...">
+      <input type="month" id="m-month" title="Ay">
+      <select id="m-st"><option value="all">Tümü</option><option value="has">Makbuzu kesilenler</option><option value="no">Makbuzu kesilmeyenler</option></select>
+    </div>
+    <div class="tw"><table><thead><tr><th>Makbuz no</th><th>Tarih</th><th>Müşteri</th><th>Poliçe</th><th>Taksit</th><th>Yöntem</th><th>Tutar</th><th></th></tr></thead><tbody id="ml"></tbody></table></div>
+    <p id="m-sum" style="margin-top:12px;font-weight:600"></p>
   </div>
 </section>
 
@@ -218,7 +233,7 @@ auth.onAuthStateChanged(u=>{
   if(u){
     unsub=[
       db.collection('transactions').onSnapshot(s=>{tx=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.timestamp-a.timestamp);renderKasa();renderPanel()},fail),
-      db.collection('policies').onSnapshot(s=>{pols=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.timestamp-a.timestamp);renderPols();renderPanel()},fail)
+      db.collection('policies').onSnapshot(s=>{pols=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.timestamp-a.timestamp);renderPols();renderPanel();renderMak()},fail)
     ];
   }else{unsub.forEach(f=>f());unsub=[]}
 });
@@ -269,7 +284,7 @@ function payInst(pid,iid){
     description:`${p.client} - Pol No: ${p.policyNo} (${i.number}. taksit)`,timestamp:Date.now()});
   b.commit().then(()=>{toast('Tahsilat kasaya işlendi');if(confirm('Tahsilat makbuzu oluşturulsun mu?'))receipt(pid,iid)}).catch(fail);
 }
-function delPol(id){if(confirm('Poliçe ve tüm taksitleri silinsin mi?'))db.collection('policies').doc(id).delete().then(()=>toast('Poliçe silindi')).catch(fail)}
+function delPol(id){if(confirm('Poliçe, tüm taksitleri ve bu poliçenin makbuz kayıtları silinsin mi?'))db.collection('policies').doc(id).delete().then(()=>toast('Poliçe silindi')).catch(fail)}
 function toggleP(id){open.has(id)?open.delete(id):open.add(id);renderPols()}
 const remaining=p=>p.totalAmount-p.installments.filter(i=>i.isPaid).reduce((a,i)=>a+i.amount,0);
 const isLate=p=>p.installments.some(i=>!i.isPaid&&daysTo(i.dueDate)<0);
@@ -410,6 +425,20 @@ function statement(pid){
   <div class="sig"><div>Düzenleyen<br>${esc(agency.yetkili||'')}<br>${esc(agency.unvan)}</div><div>Müşteri<br>${esc(c.client)}</div></div>
   <p class="note">${agency.iban?'IBAN: '+esc(agency.iban)+'. ':''}Bu liste ${fd(today())} tarihi itibarıyla düzenlenmiştir. Ödemelerin vadesinde yapılması rica olunur.</p>`);
 }
+
+// ---------- MAKBUZ ARŞİVİ ----------
+function renderMak(){
+  const q=$('m-q').value.toLowerCase(),m=$('m-month').value,st=$('m-st').value;
+  const rows=pols.flatMap(p=>p.installments.filter(i=>i.isPaid).map(i=>({p,i})))
+    .filter(({p,i})=>(!m||(i.paidDate||'').startsWith(m))&&(st==='all'||(st==='has')===!!i.receiptNo)&&(p.client+p.policyNo+(i.receiptNo||'')).toLowerCase().includes(q))
+    .sort((a,b)=>(b.i.paidDate||'').localeCompare(a.i.paidDate||'')||(b.i.receiptNo||'').localeCompare(a.i.receiptNo||''));
+  $('ml').innerHTML=rows.length?rows.map(({p,i})=>`<tr><td><b>${esc(i.receiptNo||'-')}</b></td><td>${fd(i.paidDate)}</td><td>${esc(p.client)}</td>
+    <td>${esc(p.type||'')} ${esc(p.policyNo)}</td><td>${i.number}/${p.installments.length}</td><td>${esc(i.method||'-')}</td><td><b>${money(i.amount)}</b></td>
+    <td><button class="btn sm ${i.receiptNo?'ghost':''}" onclick="receipt('${p.id}',${i.id})">${i.receiptNo?'Yazdır / PDF':'Makbuz oluştur'}</button></td></tr>`).join('')
+    :'<tr><td colspan="8" class="empty">Bu filtreye uygun tahsilat yok.</td></tr>';
+  $('m-sum').textContent=`${rows.length} kayıt | Toplam ${money(rows.reduce((a,x)=>a+x.i.amount,0))}`;
+}
+['m-q','m-month','m-st'].forEach(id=>$(id).addEventListener('input',renderMak));
 
 // ---------- DIŞA AKTARIM ----------
 function csv(name,rows){
