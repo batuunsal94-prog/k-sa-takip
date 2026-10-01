@@ -60,6 +60,7 @@ td.w{white-space:normal}
 .empty{color:var(--muted);text-align:center;padding:22px}
 .sub{background:var(--soft)}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:99px;display:none;z-index:9}
+.gh{font-size:12px;color:var(--muted);margin:0 0 8px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
 dialog{border:1px solid var(--line);border-radius:var(--r);padding:22px;background:var(--card);color:var(--text);width:min(480px,92vw);margin:auto}
 dialog::backdrop{background:rgba(0,0,0,.45)}
 @media print{header,.split>.panel:first-child,.filters,.acts,.x,.btn{display:none!important}}
@@ -95,13 +96,18 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 
 <!-- PANEL -->
 <section id="t-panel" class="tab on">
+  <h3 class="gh">Kasa (elle girilen nakit gelir ve giderler)</h3>
   <div class="stats">
-    <div class="stat"><small>Kasadaki toplam nakit (şirket primi dahil)</small><b id="s-bal">0 ₺</b></div>
-    <div class="stat"><small>Şirkete ödenecek prim</small><b class="warn" id="s-prim">0 ₺</b></div>
-    <div class="stat"><small>Bu ay gelir (komisyon + diğer)</small><b class="ok" id="s-inc">0 ₺</b></div>
+    <div class="stat"><small>Kasa bakiyesi</small><b id="s-bal">0 ₺</b></div>
+    <div class="stat"><small>Bu ay gelir</small><b class="ok" id="s-inc">0 ₺</b></div>
     <div class="stat"><small>Bu ay gider</small><b class="bad" id="s-exp">0 ₺</b></div>
-    <div class="stat"><small>Bu ay net kazancım</small><b class="ok" id="s-net">0 ₺</b></div>
-    <div class="stat"><small>Toplam alacak</small><b class="warn" id="s-rec">0 ₺</b></div>
+    <div class="stat"><small>Bu ay kasa net</small><b id="s-net">0 ₺</b></div>
+  </div>
+  <h3 class="gh">Poliçeler (kasaya dahil değil)</h3>
+  <div class="stats">
+    <div class="stat"><small>Bu ay tahsil edilen prim (şirketin parası)</small><b class="warn" id="s-prim">0 ₺</b></div>
+    <div class="stat"><small>Bu ay komisyonum</small><b class="ok" id="s-com">0 ₺</b></div>
+    <div class="stat"><small>Toplam müşteri alacağı</small><b class="warn" id="s-rec">0 ₺</b></div>
     <div class="stat"><small>Geciken tutar</small><b class="bad" id="s-late">0 ₺</b></div>
   </div>
   <div class="grid2">
@@ -112,12 +118,13 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 
 <!-- KASA -->
 <section id="t-kasa" class="tab">
+  <div class="panel" id="k-pol" style="margin-bottom:18px;background:var(--soft)"></div>
   <div class="split">
     <div class="panel">
       <h2>Yeni kasa işlemi</h2>
       <form id="tf">
         <div class="row2">
-          <div class="f"><label>Tip</label><select id="type"><option value="income">Gelir (komisyon vb.)</option><option value="expense">Gider</option><option value="prim_in">Prim tahsilatı (şirketin parası)</option><option value="prim_out">Şirkete prim ödemesi</option></select></div>
+          <div class="f"><label>Tip</label><select id="type"><option value="income">Gelir (komisyon vb.)</option><option value="expense">Gider</option></select></div>
           <div class="f"><label>Tarih</label><input type="date" id="date" required></div>
         </div>
         <div class="f"><label>Tutar (₺)</label><input type="number" id="amount" step="0.01" min="0.01" required></div>
@@ -134,7 +141,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
       <h2>Kasa hareketleri</h2>
       <div class="filters">
         <input type="month" id="f-month">
-        <select id="f-type"><option value="all">Tüm tipler</option><option value="income">Gelirler</option><option value="expense">Giderler</option><option value="prim">Prim hareketleri</option></select>
+        <select id="f-type"><option value="all">Tüm tipler</option><option value="income">Gelirler</option><option value="expense">Giderler</option><option value="prim">Eski prim kayıtları (arşiv)</option></select>
         <input type="search" id="f-q" placeholder="Ara...">
       </div>
       <div class="tw"><table><thead><tr><th>Tarih</th><th>Tip</th><th>Kategori</th><th>Açıklama</th><th>Tutar</th><th></th></tr></thead><tbody id="tl"></tbody></table></div>
@@ -252,20 +259,24 @@ $('tf').onsubmit=e=>{e.preventDefault();
 function delTx(id){if(confirm('Bu kasa kaydı silinsin mi?'))db.collection('transactions').doc(id).delete().then(()=>toast('Kayıt silindi')).catch(fail)}
 function kasaFiltered(){
   const m=$('f-month').value,ty=$('f-type').value,q=$('f-q').value.toLowerCase();
-  return tx.filter(t=>(!m||t.date.startsWith(m))&&(ty==='all'||(ty==='prim'?kind(t).startsWith('prim'):kind(t)===ty))&&(!q||(t.description+t.category).toLowerCase().includes(q)));
+  return tx.filter(t=>(!m||t.date.startsWith(m))&&(ty==='prim'?isPrim(t):!isPrim(t)&&(ty==='all'||t.type===ty))&&(!q||(t.description+t.category).toLowerCase().includes(q)));
 }
-// Prim (müşteriden alınıp şirkete aktarılan para) kazanca sayılmaz. Eski kayıtlar da otomatik prim sayılır.
-const kind=t=>t.type==='prim_in'||t.type==='prim_out'?t.type:(t.type==='income'&&['Müşteri Tahsilatı','Poliçe Peşinatı'].includes(t.category))?'prim_in':(t.type==='expense'&&t.category==='Şirket Cari Ödemesi')?'prim_out':t.type;
-const commSum=m=>pols.reduce((a,p)=>a+p.installments.filter(i=>i.isPaid&&(!m||(i.paidDate||'').startsWith(m))).reduce((s,i)=>s+i.amount*(p.commission||0)/100,0),0);
-const KL={income:['Gelir','p-ok','ok','+'],expense:['Gider','p-bad','bad','−'],prim_in:['Prim tahsilatı','p-warn','warn','+'],prim_out:['Şirkete prim','p-warn','warn','−']};
+// Prim (müşteriden alınıp şirkete aktarılan para) kasaya karışmaz; poliçelerden ayrı hesaplanır.
+const isPrim=t=>t.type==='prim_in'||t.type==='prim_out'||(t.type==='income'&&(t.category==='Poliçe Peşinatı'||(t.category==='Müşteri Tahsilatı'&&/Pol No:/.test(t.description||''))))||(t.type==='expense'&&t.category==='Şirket Cari Ödemesi');
+const kind=t=>isPrim(t)?'prim':t.type;
+const instIn=m=>pols.flatMap(p=>p.installments.filter(i=>i.isPaid&&(!m||(i.paidDate||'').startsWith(m))).map(i=>({p,i})));
+const premSum=m=>instIn(m).reduce((a,x)=>a+x.i.amount,0);
+const commSum=m=>instIn(m).reduce((a,x)=>a+x.i.amount*(x.p.commission||0)/100,0);
+const KL={income:['Gelir','p-ok','ok','+'],expense:['Gider','p-bad','bad','−'],prim:['Prim (arşiv)','p-warn','warn','']};
 function renderKasa(){
-  const f=kasaFiltered();
+  const f=kasaFiltered(),m=$('f-month').value;
   $('tl').innerHTML=f.length?f.map(t=>{const k=KL[kind(t)]||KL.income;return `<tr><td>${fd(t.date)}</td><td><span class="pill ${k[1]}">${k[0]}</span></td>
     <td>${esc(t.category)}<br><small style="color:var(--muted)">${esc(t.method||'')}</small></td><td class="w">${esc(t.description)||'-'}</td>
     <td class="${k[2]}"><b>${k[3]}${money(t.amount)}</b></td><td><button class="x" onclick="delTx('${t.id}')">✕</button></td></tr>`}).join('')
     :'<tr><td colspan="6" class="empty">Bu filtreye uygun kayıt yok.</td></tr>';
-  const s=x=>f.filter(t=>kind(t)===x).reduce((a,t)=>a+t.amount,0),cm=commSum($('f-month').value);
-  $('k-sum').innerHTML=`Gelir <span class="ok">${money(s('income'))}</span> + poliçe komisyonu <span class="ok">${money(cm)}</span> · Gider <span class="bad">${money(s('expense'))}</span> · <b>Net kazanç ${money(s('income')+cm-s('expense'))}</b><br><small style="color:var(--muted)">Prim tahsilatı ${money(s('prim_in'))} · Şirkete ödenen ${money(s('prim_out'))} (kazanca dahil değil)</small>`;
+  const s=x=>f.filter(t=>t.type===x).reduce((a,t)=>a+t.amount,0),pr=premSum(m),cm=commSum(m);
+  $('k-sum').innerHTML=$('f-type').value==='prim'?'<small style="color:var(--muted)">Bu liste kasa hesabına dahil değildir (eski prim kayıtları).</small>':`Gelir <span class="ok">${money(s('income'))}</span> · Gider <span class="bad">${money(s('expense'))}</span> · <b>Kasa net ${money(s('income')-s('expense'))}</b>`;
+  $('k-pol').innerHTML=`<b>Poliçeler (kasadan ayrı hesap)</b> · ${m?'Seçili ay':'Tüm zamanlar'}: Tahsil edilen prim <b class="warn">${money(pr)}</b> (şirketin parası) · Komisyonum <b class="ok">${money(cm)}</b> · Şirkete aktarılacak net prim <b>${money(pr-cm)}</b>`;
 }
 ['f-month','f-type','f-q'].forEach(id=>$(id).addEventListener('input',renderKasa));
 
@@ -286,9 +297,7 @@ function payInst(pid,iid){
   i.isPaid=true;i.paidDate=today();
   const b=db.batch();
   b.update(db.collection('policies').doc(pid),{installments:p.installments});
-  b.set(db.collection('transactions').doc(),{type:'prim_in',date:i.paidDate,amount:i.amount,category:'Prim Tahsilatı',method:i.method,
-    description:`${p.client} - Pol No: ${p.policyNo} (${i.number}. taksit)`,timestamp:Date.now()});
-  b.commit().then(()=>{toast('Tahsilat kasaya işlendi');if(confirm('Tahsilat makbuzu oluşturulsun mu?'))receipt(pid,iid)}).catch(fail);
+  b.commit().then(()=>{toast('Tahsilat kaydedildi (kasaya yazılmadı)');if(confirm('Tahsilat makbuzu oluşturulsun mu?'))receipt(pid,iid)}).catch(fail);
 }
 function delPol(id){if(confirm('Poliçe, tüm taksitleri ve bu poliçenin makbuz kayıtları silinsin mi?'))db.collection('policies').doc(id).delete().then(()=>toast('Poliçe silindi')).catch(fail)}
 function toggleP(id){open.has(id)?open.delete(id):open.add(id);renderPols()}
@@ -323,11 +332,11 @@ function renderPols(){
 // ---------- PANEL ----------
 function renderPanel(){
   const m=today().slice(0,7);
-  const K=x=>tx.filter(t=>kind(t)===x),sum=a=>a.reduce((s,t)=>s+t.amount,0),inM=a=>a.filter(t=>t.date.startsWith(m));
-  const P=sum(K('prim_in'))-sum(K('prim_out')),gel=sum(inM(K('income')))+commSum(m),gid=sum(inM(K('expense')));
-  $('s-bal').textContent=money(sum(K('income'))-sum(K('expense'))+P);
-  $('s-prim').textContent=money(P-commSum());
-  $('s-inc').textContent=money(gel);$('s-exp').textContent=money(gid);$('s-net').textContent=money(gel-gid);
+  const sum=a=>a.reduce((s,t)=>s+t.amount,0),inM=a=>a.filter(t=>t.date.startsWith(m)),man=tx.filter(t=>!isPrim(t));
+  const I=man.filter(t=>t.type==='income'),E=man.filter(t=>t.type==='expense');
+  $('s-bal').textContent=money(sum(I)-sum(E));
+  $('s-inc').textContent=money(sum(inM(I)));$('s-exp').textContent=money(sum(inM(E)));$('s-net').textContent=money(sum(inM(I))-sum(inM(E)));
+  $('s-prim').textContent=money(premSum(m));$('s-com').textContent=money(commSum(m));
   $('s-rec').textContent=money(pols.reduce((a,p)=>a+remaining(p),0));
   const due=[];
   pols.forEach(p=>p.installments.forEach(i=>{if(!i.isPaid){const d=daysTo(i.dueDate);if(d<=7)due.push({p,i,d})}}));
