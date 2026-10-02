@@ -56,7 +56,7 @@ td.w{white-space:normal}
 .p-ok{background:rgba(21,128,61,.14);color:var(--ok)}.p-bad{background:rgba(220,38,38,.14);color:var(--bad)}.p-warn{background:rgba(180,83,9,.15);color:var(--warn)}
 .item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
 .item:last-child{border:0}.item small{color:var(--muted);display:block}
-.acts{display:flex;gap:6px}
+.acts{display:flex;gap:6px;flex-wrap:wrap}
 .empty{color:var(--muted);text-align:center;padding:22px}
 .sub{background:var(--soft)}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:99px;display:none;z-index:9}
@@ -316,6 +316,22 @@ function editInst(pid,iid){
   others.forEach((x,k)=>x.amount=(k===others.length-1?rest-each*(others.length-1):each)/100);
   db.collection('policies').doc(pid).update({installments:inst}).then(()=>toast(others.length?'Taksit güncellendi, fark diğer taksitlere dağıtıldı':'Taksit güncellendi')).catch(fail);
 }
+// Gecikmiş (veya herhangi bir ödenmemiş) taksidin vadesini değiştirir; istenirse sonraki taksitleri de aynı gün sayısı kadar kaydırır.
+function editDue(pid,iid){
+  const p=pols.find(x=>x.id===pid),inst=p&&JSON.parse(JSON.stringify(p.installments)),i=inst&&inst.find(x=>x.id===iid);
+  if(!i||i.isPaid)return;
+  const v=prompt(`${i.number}. taksit için yeni vade tarihi (gg.aa.yyyy)`,fd(i.dueDate));
+  if(v===null)return;
+  const m=v.trim().match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/),iso=m?`${m[3]}-${z(m[2])}-${z(m[1])}`:v.trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(iso)||isNaN(new Date(iso+'T00:00')))return toast('Tarihi gg.aa.yyyy şeklinde yazın');
+  const delta=Math.round((new Date(iso+'T00:00')-new Date(i.dueDate+'T00:00'))/864e5);
+  const next=inst.filter(x=>!x.isPaid&&x.number>i.number);
+  const shift=delta!==0&&next.length&&confirm(`Sonraki ${next.length} taksidin vadesi de ${Math.abs(delta)} gün ${delta>0?'ileri':'geri'} alınsın mı?`);
+  const addDays=(d,n)=>{const t=new Date(d+'T00:00');t.setDate(t.getDate()+n);return ymd(t)};
+  i.dueDate=iso;
+  if(shift)next.forEach(x=>x.dueDate=addDays(x.dueDate,delta));
+  db.collection('policies').doc(pid).update({installments:inst}).then(()=>toast('Vade güncellendi')).catch(fail);
+}
 function delPol(id){if(confirm('Poliçe, tüm taksitleri ve bu poliçenin makbuz kayıtları silinsin mi?'))db.collection('policies').doc(id).delete().then(()=>toast('Poliçe silindi')).catch(fail)}
 function toggleP(id){open.has(id)?open.delete(id):open.add(id);renderPols()}
 const remaining=p=>p.totalAmount-p.installments.filter(i=>i.isPaid).reduce((a,i)=>a+i.amount,0);
@@ -341,7 +357,7 @@ function renderPols(){
     if(open.has(p.id))h+=`<tr><td colspan="5" class="sub"><table>${p.installments.map(i=>{const d=daysTo(i.dueDate),w=waLink(p,i);return `<tr>
       <td>${i.number}. taksit</td><td>${fd(i.dueDate)}</td><td>${money(i.amount)}</td>
       <td>${i.isPaid?`<span class="pill p-ok">Ödendi ${fd(i.paidDate)}</span>`:d<0?`<span class="pill p-bad">${-d} gün gecikti</span>`:`<span class="pill p-warn">${d===0?'Bugün':d+' gün kaldı'}</span>`}</td>
-      <td>${i.isPaid?`<button class="btn sm ghost" onclick="receipt('${p.id}',${i.id})">Makbuz</button>`:`<div class="acts"><button class="btn sm" onclick="payInst('${p.id}',${i.id})">Tahsil et</button><button class="btn sm ghost" onclick="editInst('${p.id}',${i.id})">Tutarı düzenle</button>${w?`<a class="btn sm wa" style="text-decoration:none" target="_blank" rel="noopener" href="${w}">WhatsApp</a>`:''}</div>`}</td></tr>`}).join('')}</table></td></tr>`;
+      <td>${i.isPaid?`<button class="btn sm ghost" onclick="receipt('${p.id}',${i.id})">Makbuz</button>`:`<div class="acts"><button class="btn sm" onclick="payInst('${p.id}',${i.id})">Tahsil et</button><button class="btn sm ghost" onclick="editInst('${p.id}',${i.id})">Tutarı düzenle</button><button class="btn sm ghost" onclick="editDue('${p.id}',${i.id})">Vadeyi değiştir</button>${w?`<a class="btn sm wa" style="text-decoration:none" target="_blank" rel="noopener" href="${w}">WhatsApp</a>`:''}</div>`}</td></tr>`}).join('')}</table></td></tr>`;
     return h}).join(''):'<tr><td colspan="5" class="empty">Poliçe bulunamadı.</td></tr>';
 }
 ['p-q','p-f'].forEach(id=>$(id).addEventListener('input',renderPols));
