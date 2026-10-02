@@ -299,6 +299,23 @@ function payInst(pid,iid){
   b.update(db.collection('policies').doc(pid),{installments:p.installments});
   b.commit().then(()=>{toast('Tahsilat kaydedildi (kasaya yazılmadı)');if(confirm('Tahsilat makbuzu oluşturulsun mu?'))receipt(pid,iid)}).catch(fail);
 }
+// Bir taksit tutarı değişince fark, ödenmemiş diğer taksitlere eşit dağıtılır (ödenmişlere dokunulmaz).
+function editInst(pid,iid){
+  const p=pols.find(x=>x.id===pid),inst=p&&JSON.parse(JSON.stringify(p.installments)),i=inst&&inst.find(x=>x.id===iid);
+  if(!i||i.isPaid)return;
+  const kr=x=>Math.round(x*100);
+  const pool=kr(p.totalAmount)-inst.filter(x=>x.isPaid).reduce((a,x)=>a+kr(x.amount),0);
+  const others=inst.filter(x=>!x.isPaid&&x.id!==iid);
+  const v=prompt(`${i.number}. taksit için yeni tutar (₺)\nÖdenmemiş taksitlerin toplamı: ${money(pool/100)}`,i.amount);
+  if(v===null)return;
+  const n=kr(parseFloat(String(v).replace(',','.')));
+  if(!(n>=0)||n>pool)return toast(`Tutar 0 ile ${money(pool/100)} arasında olmalı`);
+  if(!others.length&&n!==pool)return toast('Bu son ödenmemiş taksit; tutarı kalan borca eşit olmalı');
+  const rest=pool-n,each=others.length?Math.floor(rest/others.length):0;
+  i.amount=n/100;
+  others.forEach((x,k)=>x.amount=(k===others.length-1?rest-each*(others.length-1):each)/100);
+  db.collection('policies').doc(pid).update({installments:inst}).then(()=>toast(others.length?'Taksit güncellendi, fark diğer taksitlere dağıtıldı':'Taksit güncellendi')).catch(fail);
+}
 function delPol(id){if(confirm('Poliçe, tüm taksitleri ve bu poliçenin makbuz kayıtları silinsin mi?'))db.collection('policies').doc(id).delete().then(()=>toast('Poliçe silindi')).catch(fail)}
 function toggleP(id){open.has(id)?open.delete(id):open.add(id);renderPols()}
 const remaining=p=>p.totalAmount-p.installments.filter(i=>i.isPaid).reduce((a,i)=>a+i.amount,0);
@@ -324,7 +341,7 @@ function renderPols(){
     if(open.has(p.id))h+=`<tr><td colspan="5" class="sub"><table>${p.installments.map(i=>{const d=daysTo(i.dueDate),w=waLink(p,i);return `<tr>
       <td>${i.number}. taksit</td><td>${fd(i.dueDate)}</td><td>${money(i.amount)}</td>
       <td>${i.isPaid?`<span class="pill p-ok">Ödendi ${fd(i.paidDate)}</span>`:d<0?`<span class="pill p-bad">${-d} gün gecikti</span>`:`<span class="pill p-warn">${d===0?'Bugün':d+' gün kaldı'}</span>`}</td>
-      <td>${i.isPaid?`<button class="btn sm ghost" onclick="receipt('${p.id}',${i.id})">Makbuz</button>`:`<div class="acts"><button class="btn sm" onclick="payInst('${p.id}',${i.id})">Tahsil et</button>${w?`<a class="btn sm wa" style="text-decoration:none" target="_blank" rel="noopener" href="${w}">WhatsApp</a>`:''}</div>`}</td></tr>`}).join('')}</table></td></tr>`;
+      <td>${i.isPaid?`<button class="btn sm ghost" onclick="receipt('${p.id}',${i.id})">Makbuz</button>`:`<div class="acts"><button class="btn sm" onclick="payInst('${p.id}',${i.id})">Tahsil et</button><button class="btn sm ghost" onclick="editInst('${p.id}',${i.id})">Tutarı düzenle</button>${w?`<a class="btn sm wa" style="text-decoration:none" target="_blank" rel="noopener" href="${w}">WhatsApp</a>`:''}</div>`}</td></tr>`}).join('')}</table></td></tr>`;
     return h}).join(''):'<tr><td colspan="5" class="empty">Poliçe bulunamadı.</td></tr>';
 }
 ['p-q','p-f'].forEach(id=>$(id).addEventListener('input',renderPols));
