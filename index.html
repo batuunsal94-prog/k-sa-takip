@@ -144,7 +144,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
     <div class="stat"><small>Borçlu müşteri</small><b id="b-cnt">0</b></div>
   </div>
   <div class="panel">
-    <h2>Müşteri borçları</h2>
+    <div class="ph"><h2>Müşteri borçları</h2><button class="btn sm" onclick="$('ddlg').showModal()">+ Elden borç ekle</button></div>
     <div class="filters">
       <input type="search" id="b-q" placeholder="Müşteri ara...">
       <select id="b-f"><option value="all">Borcu olan herkes</option><option value="late">Gecikenler</option><option value="soon">7 gün içinde vadesi gelenler</option></select>
@@ -185,6 +185,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
           <div class="f"><label>Toplam prim (₺)</label><input id="p-amount" type="number" step="0.01" min="1" required></div>
           <div class="f"><label>Komisyon %</label><input id="p-com" type="number" step="0.1" min="0" max="100"></div>
         </div>
+        <div class="f"><label>Komisyondan indirim (₺, isteğe bağlı)</label><input id="p-disc" type="number" step="0.01" min="0"></div>
         <div class="row2">
           <div class="f"><label>Taksit</label><select id="p-count"><option value="1">Peşin</option><option>2</option><option>3</option><option>4</option><option>6</option><option>9</option><option>12</option></select></div>
           <div class="f"><label>İlk vade</label><input id="p-first" type="date" required></div>
@@ -215,12 +216,29 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
   <div class="filters"><input type="month" id="pm"></div>
   <div class="stats" style="margin-bottom:12px">
     <div class="stat"><small>Tahsil edilen prim</small><b class="warn" id="pm-prim">0 ₺</b></div>
-    <div class="stat"><small>Komisyonum</small><b class="ok" id="pm-com">0 ₺</b></div>
+    <div class="stat"><small>Brüt komisyon</small><b id="pm-com">0 ₺</b></div>
+    <div class="stat"><small>Yapılan indirim</small><b class="bad" id="pm-dis">0 ₺</b></div>
+    <div class="stat"><small>Net komisyonum</small><b class="ok" id="pm-ncom">0 ₺</b></div>
     <div class="stat"><small>Şirkete aktarılacak</small><b id="pm-net">0 ₺</b></div>
   </div>
   <div class="tw"><table><thead><tr><th>Tarih</th><th>Müşteri</th><th>Poliçe</th><th>Prim</th><th>Komisyon</th></tr></thead><tbody id="pm-l"></tbody></table></div>
+  <h3 style="margin:18px 0 8px;font-size:14px">Komisyondan yapılan indirimler</h3>
+  <div class="tw"><table><thead><tr><th>Tarih</th><th>Müşteri</th><th>Poliçe</th><th>İndirim</th><th>Not</th><th></th></tr></thead><tbody id="pm-d"></tbody></table></div>
 </dialog>
 
+<dialog id="ddlg"><h2 style="margin-bottom:12px">Elden borç ekle</h2>
+  <form id="df">
+    <div class="f"><label>Kişi / müşteri</label><input id="d-client" required></div>
+    <div class="f"><label>Telefon (WhatsApp için)</label><input id="d-phone" type="tel"></div>
+    <div class="row2">
+      <div class="f"><label>Borç tutarı (₺)</label><input id="d-amount" type="number" step="0.01" min="0.01" required></div>
+      <div class="f"><label>Verildiği tarih</label><input id="d-date" type="date" required></div>
+    </div>
+    <div class="f"><label>Ödeme sözü / vade (isteğe bağlı)</label><input id="d-due" type="date"></div>
+    <div class="f"><label>Not</label><input id="d-note"></div>
+    <div class="acts"><button class="btn">Kaydet</button><button type="button" class="btn ghost" onclick="$('ddlg').close()">Kapat</button></div>
+  </form>
+</dialog>
 <div id="toast"></div>
 
 <script>
@@ -229,7 +247,7 @@ firebase.initializeApp({
   storageBucket:"acente-kasa.firebasestorage.app",messagingSenderId:"129440057590",appId:"1:129440057590:web:6cf460352dcacf379044d7"
 });
 const auth=firebase.auth(), db=firebase.firestore();
-let tx=[], pols=[], unsub=[], open=new Set();
+let tx=[], pols=[], debts=[], unsub=[], open=new Set();
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>(n||0).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+' ₺';
@@ -260,13 +278,14 @@ auth.onAuthStateChanged(u=>{
     unsub=[
       db.collection('transactions').onSnapshot(s=>{tx=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.timestamp-a.timestamp);renderKasa()},fail),
       db.collection('policies').onSnapshot(s=>{pols=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.timestamp-a.timestamp);renderPols();renderBorc();renderMak();renderRen();if($('pdlg').open)renderPrim()},fail)
+      ,db.collection('debts').onSnapshot(s=>{debts=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.timestamp-a.timestamp);renderBorc()},fail)
     ];
   }else{unsub.forEach(f=>f());unsub=[]}
 });
 $('login-form').onsubmit=e=>{e.preventDefault();
   auth.signInWithEmailAndPassword($('le').value,$('lp').value).catch(()=>{const r=$('lerr');r.style.display='block';r.textContent='E-posta veya şifre hatalı.'})};
 
-$('date').value=$('p-first').value=today();
+$('date').value=$('p-first').value=$('d-date').value=today();
 
 // ---------- KASA (sadece elle girilen gelir / gider) ----------
 // Eski sürümden kalan prim / şirket kayıtları kasada görünmez (silinmez, sadece gizlenir).
@@ -299,7 +318,7 @@ $('pf').onsubmit=e=>{e.preventDefault();
   const total=parseFloat($('p-amount').value),n=parseInt($('p-count').value),first=$('p-first').value,each=+(total/n).toFixed(2);
   const inst=[...Array(n)].map((_,i)=>({id:i+1,number:i+1,dueDate:addMonths(first,i),amount:i===n-1?+(total-each*(n-1)).toFixed(2):each,isPaid:false,paidDate:null}));
   db.collection('policies').add({client:$('p-client').value.trim(),phone:$('p-phone').value.trim(),policyNo:$('p-no').value.trim(),type:$('p-type').value,company:$('p-company').value.trim(),
-    totalAmount:total,commission:parseFloat($('p-com').value)||0,endDate:$('p-end').value||'',installments:inst,timestamp:Date.now()})
+    totalAmount:total,commission:parseFloat($('p-com').value)||0,discounts:parseFloat($('p-disc').value)>0?[{amount:parseFloat($('p-disc').value),date:today(),note:''}]:[],endDate:$('p-end').value||'',installments:inst,timestamp:Date.now()})
    .then(()=>{toast('Poliçe kaydedildi');$('pf').reset();$('p-first').value=today()}).catch(fail)};
 
 function payInst(pid,iid){
@@ -371,7 +390,7 @@ function renderPols(){
       <td>${esc(p.policyNo)} <span class="pill p-warn">${esc(p.type||'-')}</span><br><small class="m">${esc(p.company||'-')}${p.endDate?' · Bitiş '+fd(p.endDate):''}</small></td>
       <td>${money(p.totalAmount)}</td>
       <td class="${r>0?'bad':'ok'}"><b>${money(r)}</b></td>
-      <td><div class="acts"><button class="btn sm ghost" onclick="toggleP('${p.id}')">Taksitler ${paid}/${p.installments.length}</button><button class="btn sm ghost" onclick="statement('${p.id}')">Vade listesi</button><button class="x" onclick="delPol('${p.id}')">Sil</button></div></td></tr>`;
+      <td><div class="acts"><button class="btn sm ghost" onclick="toggleP('${p.id}')">Taksitler ${paid}/${p.installments.length}</button><button class="btn sm ghost" onclick="addDisc('${p.id}')">İndirim</button><button class="btn sm ghost" onclick="statement('${p.id}')">Vade listesi</button><button class="x" onclick="delPol('${p.id}')">Sil</button></div></td></tr>`;
     if(open.has(p.id))h+=`<tr><td colspan="5" class="sub">${instTable(p)}</td></tr>`;
     return h}).join(''):'<tr><td colspan="5" class="empty">Poliçe bulunamadı.</td></tr>';
 }
@@ -384,28 +403,56 @@ function renderRen(){
     return `<div class="item"><div><b>${esc(p.client)}</b><small>${esc(p.type||'')} ${esc(p.policyNo)} · ${esc(p.company||'')}</small></div><div class="acts"><span class="pill p-warn">${d===0?'Bugün bitiyor':d+' gün kaldı'}</span>${l}</div></div>`}).join('');
 }
 
-// ---------- BORÇ TAKİBİ (kasadan ayrı) ----------
+// ---------- BORÇ TAKİBİ (kasadan ayrı; poliçe taksitleri + elden borçlar) ----------
+const debtRem=d=>d.amount-(d.payments||[]).reduce((a,x)=>a+x.amount,0);
+$('df').onsubmit=e=>{e.preventDefault();
+  db.collection('debts').add({client:$('d-client').value.trim(),phone:$('d-phone').value.trim(),amount:parseFloat($('d-amount').value),date:$('d-date').value,dueDate:$('d-due').value||'',note:$('d-note').value.trim(),payments:[],timestamp:Date.now()})
+   .then(()=>{toast('Borç kaydedildi');$('df').reset();$('d-date').value=today();$('ddlg').close()}).catch(fail)};
+function payDebt(id){
+  const d=debts.find(x=>x.id===id);if(!d)return;
+  const rem=Math.round(debtRem(d)*100)/100;
+  const v=prompt(`${d.client} - alınan ödeme (₺)\nKalan borç: ${money(rem)}`,rem);
+  if(v===null)return;
+  const n=Math.round(parseFloat(String(v).replace(',','.'))*100)/100;
+  if(!(n>0)||n>rem+0.001)return toast(`Tutar 0 ile ${money(rem)} arasında olmalı`);
+  db.collection('debts').doc(id).update({payments:[...(d.payments||[]),{amount:n,date:today()}]}).then(()=>toast(n>=rem?'Borç kapandı':'Ödeme kaydedildi')).catch(fail);
+}
+function delDebt(id){if(confirm('Bu borç kaydı silinsin mi?'))db.collection('debts').doc(id).delete().then(()=>toast('Borç silindi')).catch(fail)}
+function debtTable(d){
+  const rem=debtRem(d),dd=d.dueDate?daysTo(d.dueDate):null,ph=phoneIntl(d.phone);
+  const msg=`Sayın ${d.client}, ${money(rem)} tutarındaki borcunuzu${d.dueDate?' '+fd(d.dueDate)+' tarihine kadar':''} ödemenizi rica ederiz.`;
+  return `<table><tr><td>Elden borç</td><td>${fd(d.date)}</td><td>${money(d.amount)}</td><td>Kalan <b>${money(rem)}</b></td>
+    <td>${dd===null?'<span class="pill p-warn">Vadesiz</span>':dd<0?`<span class="pill p-bad">${-dd} gün gecikti</span>`:`<span class="pill p-warn">${dd===0?'Bugün':dd+' gün kaldı'}</span>`}</td>
+    <td><div class="acts"><button class="btn sm" onclick="payDebt('${d.id}')">Ödeme al</button><button class="x" onclick="delDebt('${d.id}')">Sil</button>${ph?`<a class="btn sm wa" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/${ph}?text=${encodeURIComponent(msg)}">WhatsApp</a>`:''}</div></td></tr>
+    ${d.note?`<tr><td colspan="6" class="m">Not: ${esc(d.note)}</td></tr>`:''}
+    ${(d.payments||[]).length?`<tr><td colspan="6" class="m">Ödemeler: ${d.payments.map(x=>fd(x.date)+' '+money(x.amount)).join(' · ')}</td></tr>`:''}</table>`;
+}
 function renderBorc(){
   const q=$('b-q').value.toLowerCase(),fl=$('b-f').value,g={};
-  pols.forEach(p=>{const k=p.client.trim().toLowerCase();(g[k]=g[k]||{name:p.client,phone:'',list:[]}).list.push(p);if(p.phone)g[k].phone=p.phone});
-  const all=Object.entries(g).map(([k,x])=>{
-    const un=x.list.flatMap(p=>p.installments.filter(i=>!i.isPaid).map(i=>({p,i,d:daysTo(i.dueDate)})));
-    return{k,x,un,rem:un.reduce((a,u)=>a+u.i.amount,0),late:un.filter(u=>u.d<0).reduce((a,u)=>a+u.i.amount,0),next:un.map(u=>u.i.dueDate).sort()[0]};
-  }).filter(r=>r.rem>0);
+  const grp=(name,phone)=>{const k=name.trim().toLowerCase(),x=g[k]=g[k]||{name,phone:'',list:[],man:[]};if(phone)x.phone=phone;return x};
+  pols.forEach(p=>grp(p.client,p.phone).list.push(p));
+  debts.forEach(d=>grp(d.client,d.phone).man.push(d));
   const sum=a=>a.reduce((s,r)=>s+r,0);
+  const all=Object.entries(g).map(([k,x])=>{
+    const un=x.list.flatMap(p=>p.installments.filter(i=>!i.isPaid).map(i=>({p,i})));
+    const md=x.man.filter(d=>debtRem(d)>0.004);
+    const items=[...un.map(u=>({a:u.i.amount,due:u.i.dueDate})),...md.map(d=>({a:debtRem(d),due:d.dueDate||''}))].map(t=>({...t,d:t.due?daysTo(t.due):null}));
+    return{k,x,md,items,rem:sum(items.map(t=>t.a)),late:sum(items.filter(t=>t.d!==null&&t.d<0).map(t=>t.a)),
+      soon:items.some(t=>t.d!==null&&t.d>=0&&t.d<=7),next:items.map(t=>t.due).filter(Boolean).sort()[0]};
+  }).filter(r=>r.rem>0.004);
   $('b-rec').textContent=money(sum(all.map(r=>r.rem)));
   $('b-late').textContent=money(sum(all.map(r=>r.late)));
-  $('b-soon').textContent=money(sum(all.flatMap(r=>r.un.filter(u=>u.d>=0&&u.d<=7).map(u=>u.i.amount))));
+  $('b-soon').textContent=money(sum(all.flatMap(r=>r.items.filter(t=>t.d!==null&&t.d>=0&&t.d<=7).map(t=>t.a))));
   $('b-cnt').textContent=all.length;
-  const rows=all.filter(r=>r.x.name.toLowerCase().includes(q)&&(fl==='all'||(fl==='late'&&r.late>0)||(fl==='soon'&&r.un.some(u=>u.d>=0&&u.d<=7))))
-    .sort((a,b)=>b.late-a.late||(a.next||'').localeCompare(b.next||''));
+  const rows=all.filter(r=>r.x.name.toLowerCase().includes(q)&&(fl==='all'||(fl==='late'&&r.late>0)||(fl==='soon'&&r.soon)))
+    .sort((a,b)=>b.late-a.late||(a.next||'9').localeCompare(b.next||'9'));
   $('bl').innerHTML=rows.length?rows.map(r=>{
-    const key=encodeURIComponent(r.k),isOpen=open.has('b:'+r.k),d=daysTo(r.next);
-    let h=`<tr><td class="w"><b>${esc(r.x.name)}</b><br><small class="m">${esc(r.x.phone||'')}</small></td>
+    const key=encodeURIComponent(r.k),isOpen=open.has('b:'+r.k),d=r.next?daysTo(r.next):null;
+    let h=`<tr><td class="w"><b>${esc(r.x.name)}</b>${r.md.length?' <span class="pill p-warn">Elden borç</span>':''}<br><small class="m">${esc(r.x.phone||'')}</small></td>
       <td><b class="warn">${money(r.rem)}</b></td><td class="${r.late>0?'bad':'m'}"><b>${r.late>0?money(r.late):'-'}</b></td>
-      <td>${fd(r.next)} <span class="pill ${d<0?'p-bad':'p-warn'}">${d<0?-d+' gün gecikti':d===0?'Bugün':d+' gün kaldı'}</span></td>
-      <td><button class="btn sm ghost" onclick="toggleB('${key}')">${isOpen?'Gizle':'Taksitler'}</button></td></tr>`;
-    if(isOpen)h+=`<tr><td colspan="5" class="sub">${r.x.list.filter(p=>remaining(p)>0).map(p=>`<p style="padding:8px 10px 0"><b>${esc(p.type||'Poliçe')}</b> ${esc(p.policyNo)} <span class="m">· ${esc(p.company||'')}</span></p>${instTable(p)}`).join('')}</td></tr>`;
+      <td>${r.next?`${fd(r.next)} <span class="pill ${d<0?'p-bad':'p-warn'}">${d<0?-d+' gün gecikti':d===0?'Bugün':d+' gün kaldı'}</span>`:'<span class="m">Vadesiz</span>'}</td>
+      <td><button class="btn sm ghost" onclick="toggleB('${key}')">${isOpen?'Gizle':'Detay'}</button></td></tr>`;
+    if(isOpen)h+=`<tr><td colspan="5" class="sub">${r.x.list.filter(p=>remaining(p)>0).map(p=>`<p style="padding:8px 10px 0"><b>${esc(p.type||'Poliçe')}</b> ${esc(p.policyNo)} <span class="m">· ${esc(p.company||'')}</span></p>${instTable(p)}`).join('')}${r.md.map(debtTable).join('')}</td></tr>`;
     return h}).join(''):'<tr><td colspan="5" class="empty">Bu filtreye uygun borç yok.</td></tr>';
 }
 ['b-q','b-f'].forEach(id=>$(id).addEventListener('input',renderBorc));
@@ -416,10 +463,28 @@ function renderPrim(){
   const m=$('pm').value;
   const rows=pols.flatMap(p=>p.installments.filter(i=>i.isPaid&&(!m||(i.paidDate||'').startsWith(m))).map(i=>({p,i,c:i.amount*(p.commission||0)/100})))
     .sort((a,b)=>(b.i.paidDate||'').localeCompare(a.i.paidDate||''));
-  const pr=rows.reduce((a,r)=>a+r.i.amount,0),cm=rows.reduce((a,r)=>a+r.c,0);
-  $('pm-prim').textContent=money(pr);$('pm-com').textContent=money(cm);$('pm-net').textContent=money(pr-cm);
-  $('pm-l').innerHTML=rows.length?rows.map(({p,i,c})=>`<tr><td>${fd(i.paidDate)}</td><td>${esc(p.client)}</td><td>${esc(p.type||'')} ${esc(p.policyNo)} (${i.number}/${p.installments.length})</td><td>${money(i.amount)}</td><td class="ok">${money(c)}</td></tr>`).join('')
+  const dis=pols.flatMap(p=>(p.discounts||[]).map((d,idx)=>({p,d,idx}))).filter(x=>!m||(x.d.date||'').startsWith(m)).sort((a,b)=>(b.d.date||'').localeCompare(a.d.date||''));
+  const pr=rows.reduce((a,r)=>a+r.i.amount,0),cm=rows.reduce((a,r)=>a+r.c,0),ds=dis.reduce((a,x)=>a+x.d.amount,0);
+  $('pm-prim').textContent=money(pr);$('pm-com').textContent=money(cm);$('pm-dis').textContent=money(ds);$('pm-ncom').textContent=money(cm-ds);$('pm-net').textContent=money(pr-cm);
+  $('pm-l').innerHTML=rows.length?rows.map(({p,i,c})=>`<tr><td>${fd(i.paidDate)}</td><td>${esc(p.client)}</td><td>${esc(p.type||'')} ${esc(p.policyNo)} (${i.number}/${p.installments.length})</td><td>${money(i.amount)}</td><td>${money(c)}</td></tr>`).join('')
     :'<tr><td colspan="5" class="empty">Bu dönemde tahsilat yok.</td></tr>';
+  $('pm-d').innerHTML=dis.length?dis.map(({p,d,idx})=>`<tr><td>${fd(d.date)}</td><td>${esc(p.client)}</td><td>${esc(p.type||'')} ${esc(p.policyNo)}</td><td class="bad">${money(d.amount)}</td><td class="w">${esc(d.note||'')}</td><td><button class="x" onclick="delDisc('${p.id}',${idx})">✕</button></td></tr>`).join('')
+    :'<tr><td colspan="6" class="empty">Bu dönemde indirim yok.</td></tr>';
+}
+// Poliçe komisyonundan yapılan indirim (sadece Prim özeti'nde görünür)
+function addDisc(pid){
+  const p=pols.find(x=>x.id===pid);if(!p)return;
+  const v=prompt(`${p.client} - ${p.policyNo}\nKomisyondan yapılan indirim (₺)`);
+  if(v===null)return;
+  const n=Math.round(parseFloat(String(v).replace(',','.'))*100)/100;
+  if(!(n>0))return toast('Geçerli bir tutar girin');
+  const note=prompt('Not (isteğe bağlı)','')||'';
+  db.collection('policies').doc(pid).update({discounts:[...(p.discounts||[]),{amount:n,date:today(),note:note.trim()}]}).then(()=>toast('İndirim kaydedildi')).catch(fail);
+}
+function delDisc(pid,idx){
+  const p=pols.find(x=>x.id===pid);if(!p||!confirm('Bu indirim kaydı silinsin mi?'))return;
+  const a=[...(p.discounts||[])];a.splice(idx,1);
+  db.collection('policies').doc(pid).update({discounts:a}).then(()=>toast('İndirim silindi')).catch(fail);
 }
 $('pm').addEventListener('input',renderPrim);
 
