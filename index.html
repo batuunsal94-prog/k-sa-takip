@@ -30,11 +30,11 @@ nav button.on{background:var(--card);color:var(--pri);box-shadow:0 1px 3px rgba(
 .stat small{color:var(--muted);font-weight:600}
 .stat b{display:block;font-size:24px;margin-top:6px;letter-spacing:-.5px}
 .ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 .split{display:grid;grid-template-columns:320px 1fr;gap:18px;align-items:start}
-@media(max-width:900px){.grid2,.split{grid-template-columns:1fr}}
+@media(max-width:900px){.split{grid-template-columns:1fr}}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px}
 .panel h2{font-size:16px;margin-bottom:12px}
+.ph{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}.ph h2{margin:0}
 .f{margin-bottom:11px}.f label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px}
 input,select,textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
 input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--pri);outline-offset:1px}
@@ -56,12 +56,13 @@ td.w{white-space:normal}
 .p-ok{background:rgba(21,128,61,.14);color:var(--ok)}.p-bad{background:rgba(220,38,38,.14);color:var(--bad)}.p-warn{background:rgba(180,83,9,.15);color:var(--warn)}
 .item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
 .item:last-child{border:0}.item small{color:var(--muted);display:block}
-.acts{display:flex;gap:6px;flex-wrap:wrap}
+.acts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .empty{color:var(--muted);text-align:center;padding:22px}
 .sub{background:var(--soft)}
+.m{color:var(--muted)}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:99px;display:none;z-index:9}
-.gh{font-size:12px;color:var(--muted);margin:0 0 8px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
 dialog{border:1px solid var(--line);border-radius:var(--r);padding:22px;background:var(--card);color:var(--text);width:min(480px,92vw);margin:auto}
+dialog.big{width:min(760px,94vw)}
 dialog::backdrop{background:rgba(0,0,0,.45)}
 @media print{header,.split>.panel:first-child,.filters,.acts,.x,.btn{display:none!important}}
 </style>
@@ -80,10 +81,10 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 
 <div id="app">
 <header><div class="bar">
-  <span class="brand">🛡️ Acente Kasa & Poliçe</span>
+  <span class="brand">🛡️ Acente</span>
   <nav>
-    <button class="on" data-t="panel">Panel</button>
-    <button data-t="kasa">Kasa</button>
+    <button class="on" data-t="kasa">Kasa</button>
+    <button data-t="borc">Borç Takibi</button>
     <button data-t="pol">Poliçeler</button>
     <button data-t="mak">Makbuzlar</button>
   </nav>
@@ -94,60 +95,61 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 
 <div class="wrap">
 
-<!-- PANEL -->
-<section id="t-panel" class="tab on">
-  <h3 class="gh">Kasa (elle girilen nakit gelir ve giderler)</h3>
+<!-- KASA: sadece elle girilen günlük gelir / gider -->
+<section id="t-kasa" class="tab on">
   <div class="stats">
     <div class="stat"><small>Kasa bakiyesi</small><b id="s-bal">0 ₺</b></div>
-    <div class="stat"><small>Bu ay gelir</small><b class="ok" id="s-inc">0 ₺</b></div>
-    <div class="stat"><small>Bu ay gider</small><b class="bad" id="s-exp">0 ₺</b></div>
-    <div class="stat"><small>Bu ay kasa net</small><b id="s-net">0 ₺</b></div>
+    <div class="stat"><small>Bugün giren</small><b class="ok" id="s-inc">0 ₺</b></div>
+    <div class="stat"><small>Bugün çıkan</small><b class="bad" id="s-exp">0 ₺</b></div>
+    <div class="stat"><small>Bugün net</small><b id="s-net">0 ₺</b></div>
   </div>
-  <h3 class="gh">Poliçeler (kasaya dahil değil)</h3>
-  <div class="stats">
-    <div class="stat"><small>Bu ay tahsil edilen prim (şirketin parası)</small><b class="warn" id="s-prim">0 ₺</b></div>
-    <div class="stat"><small>Bu ay komisyonum</small><b class="ok" id="s-com">0 ₺</b></div>
-    <div class="stat"><small>Toplam müşteri alacağı</small><b class="warn" id="s-rec">0 ₺</b></div>
-    <div class="stat"><small>Geciken tutar</small><b class="bad" id="s-late">0 ₺</b></div>
-  </div>
-  <div class="grid2">
-    <div class="panel"><h2>Geciken ve 7 gün içinde vadesi gelen taksitler</h2><div id="due"></div></div>
-    <div class="panel"><h2>30 gün içinde biten poliçeler (yenileme)</h2><div id="ren"></div></div>
-  </div>
-</section>
-
-<!-- KASA -->
-<section id="t-kasa" class="tab">
-  <div class="panel" id="k-pol" style="margin-bottom:18px;background:var(--soft)"></div>
   <div class="split">
     <div class="panel">
-      <h2>Yeni kasa işlemi</h2>
+      <h2>Yeni işlem</h2>
       <form id="tf">
         <div class="row2">
-          <div class="f"><label>Tip</label><select id="type"><option value="income">Gelir (komisyon vb.)</option><option value="expense">Gider</option></select></div>
+          <div class="f"><label>Tip</label><select id="type"><option value="income">Gelir (giren)</option><option value="expense">Gider (çıkan)</option></select></div>
           <div class="f"><label>Tarih</label><input type="date" id="date" required></div>
         </div>
         <div class="f"><label>Tutar (₺)</label><input type="number" id="amount" step="0.01" min="0.01" required></div>
         <div class="row2">
           <div class="f"><label>Kategori</label><select id="category">
             <option>Komisyon Geliri</option><option>Diğer Gelir</option><option>Fatura Ödemesi</option><option>Personel / Maaş</option><option>Kira / Aidat</option><option>Diğer</option></select></div>
-          <div class="f"><label>Ödeme yöntemi</label><select id="method"><option>Nakit</option><option>Kredi Kartı</option><option>Havale/EFT</option></select></div>
+          <div class="f"><label>Yöntem</label><select id="method"><option>Nakit</option><option>Kredi Kartı</option><option>Havale/EFT</option></select></div>
         </div>
         <div class="f"><label>Açıklama</label><textarea id="description" rows="2"></textarea></div>
-        <button class="btn">Kasaya işle</button>
+        <button class="btn">Kaydet</button>
       </form>
     </div>
     <div class="panel">
       <h2>Kasa hareketleri</h2>
       <div class="filters">
-        <input type="month" id="f-month">
-        <select id="f-type"><option value="all">Tüm tipler</option><option value="income">Gelirler</option><option value="expense">Giderler</option><option value="prim">Eski prim kayıtları (arşiv)</option></select>
+        <select id="f-range"><option value="day">Bugün</option><option value="month">Bu ay</option><option value="all">Tümü</option></select>
+        <select id="f-type"><option value="all">Gelir + gider</option><option value="income">Sadece gelir</option><option value="expense">Sadece gider</option></select>
         <input type="search" id="f-q" placeholder="Ara...">
       </div>
       <div class="tw"><table><thead><tr><th>Tarih</th><th>Tip</th><th>Kategori</th><th>Açıklama</th><th>Tutar</th><th></th></tr></thead><tbody id="tl"></tbody></table></div>
       <p id="k-sum" style="margin:12px 0;font-weight:600"></p>
       <div class="acts"><button class="btn sm ghost" onclick="exportKasa()">Excel (CSV) indir</button><button class="btn sm ghost" onclick="print()">Yazdır</button></div>
     </div>
+  </div>
+</section>
+
+<!-- BORÇ TAKİBİ: kasadan tamamen ayrı -->
+<section id="t-borc" class="tab">
+  <div class="stats">
+    <div class="stat"><small>Toplam müşteri borcu</small><b class="warn" id="b-rec">0 ₺</b></div>
+    <div class="stat"><small>Geciken tutar</small><b class="bad" id="b-late">0 ₺</b></div>
+    <div class="stat"><small>7 gün içinde vadesi gelen</small><b id="b-soon">0 ₺</b></div>
+    <div class="stat"><small>Borçlu müşteri</small><b id="b-cnt">0</b></div>
+  </div>
+  <div class="panel">
+    <h2>Müşteri borçları</h2>
+    <div class="filters">
+      <input type="search" id="b-q" placeholder="Müşteri ara...">
+      <select id="b-f"><option value="all">Borcu olan herkes</option><option value="late">Gecikenler</option><option value="soon">7 gün içinde vadesi gelenler</option></select>
+    </div>
+    <div class="tw"><table><thead><tr><th>Müşteri</th><th>Kalan borç</th><th>Geciken</th><th>En yakın vade</th><th></th></tr></thead><tbody id="bl"></tbody></table></div>
   </div>
 </section>
 
@@ -167,6 +169,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 
 <!-- POLİÇE -->
 <section id="t-pol" class="tab">
+  <div class="panel" id="ren-wrap" style="margin-bottom:18px;display:none"><h2>30 gün içinde biten poliçeler (yenileme)</h2><div id="ren"></div></div>
   <div class="split">
     <div class="panel">
       <h2>Yeni poliçe kaydı</h2>
@@ -179,19 +182,19 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
         </div>
         <div class="f"><label>Sigorta şirketi</label><input id="p-company"></div>
         <div class="row2">
-          <div class="f"><label>Toplam tutar (₺)</label><input id="p-amount" type="number" step="0.01" min="1" required></div>
-          <div class="f"><label>Komisyon % (tahsilattan kesilir)</label><input id="p-com" type="number" step="0.1" min="0" max="100"></div>
+          <div class="f"><label>Toplam prim (₺)</label><input id="p-amount" type="number" step="0.01" min="1" required></div>
+          <div class="f"><label>Komisyon %</label><input id="p-com" type="number" step="0.1" min="0" max="100"></div>
         </div>
         <div class="row2">
           <div class="f"><label>Taksit</label><select id="p-count"><option value="1">Peşin</option><option>2</option><option>3</option><option>4</option><option>6</option><option>9</option><option>12</option></select></div>
           <div class="f"><label>İlk vade</label><input id="p-first" type="date" required></div>
         </div>
         <div class="f"><label>Poliçe bitiş tarihi</label><input id="p-end" type="date"></div>
-        <button class="btn">Poliçeyi ve taksitleri oluştur</button>
+        <button class="btn">Poliçeyi kaydet</button>
       </form>
     </div>
     <div class="panel">
-      <h2>Poliçeler</h2>
+      <div class="ph"><h2>Poliçeler</h2><button class="btn sm ghost" onclick="openPrim()">💼 Prim özeti</button></div>
       <div class="filters">
         <input type="search" id="p-q" placeholder="Müşteri, poliçe no veya tür ara...">
         <select id="p-f"><option value="all">Tümü</option><option value="open">Borcu olan</option><option value="late">Gecikmiş</option><option value="closed">Kapanmış</option></select>
@@ -203,7 +206,21 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 </section>
 
 </div></div>
-<dialog id="dlg"><h2 style="margin-bottom:4px">Acente bilgileri</h2><p style="color:var(--muted);margin-bottom:12px">Makbuz ve vade listesinin üst kısmında görünür.</p><form id="af"></form></dialog>
+
+<dialog id="dlg"><h2 style="margin-bottom:4px">Acente bilgileri</h2><p class="m" style="margin-bottom:12px">Makbuz ve vade listesinin üst kısmında görünür.</p><form id="af"></form></dialog>
+
+<dialog id="pdlg" class="big">
+  <div class="ph"><h2>Prim özeti</h2><button class="btn sm ghost" onclick="$('pdlg').close()">Kapat</button></div>
+  <p class="m" style="margin-bottom:12px">Tahsil edilen primler. Kasaya dahil değildir, sadece kayıt amaçlıdır.</p>
+  <div class="filters"><input type="month" id="pm"></div>
+  <div class="stats" style="margin-bottom:12px">
+    <div class="stat"><small>Tahsil edilen prim</small><b class="warn" id="pm-prim">0 ₺</b></div>
+    <div class="stat"><small>Komisyonum</small><b class="ok" id="pm-com">0 ₺</b></div>
+    <div class="stat"><small>Şirkete aktarılacak</small><b id="pm-net">0 ₺</b></div>
+  </div>
+  <div class="tw"><table><thead><tr><th>Tarih</th><th>Müşteri</th><th>Poliçe</th><th>Prim</th><th>Komisyon</th></tr></thead><tbody id="pm-l"></tbody></table></div>
+</dialog>
+
 <div id="toast"></div>
 
 <script>
@@ -241,8 +258,8 @@ auth.onAuthStateChanged(u=>{
   $('login').style.display=u?'none':'block';$('app').style.display=u?'block':'none';
   if(u){
     unsub=[
-      db.collection('transactions').onSnapshot(s=>{tx=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.timestamp-a.timestamp);renderKasa();renderPanel()},fail),
-      db.collection('policies').onSnapshot(s=>{pols=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.timestamp-a.timestamp);renderPols();renderPanel();renderMak();renderKasa()},fail)
+      db.collection('transactions').onSnapshot(s=>{tx=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.timestamp-a.timestamp);renderKasa()},fail),
+      db.collection('policies').onSnapshot(s=>{pols=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.timestamp-a.timestamp);renderPols();renderBorc();renderMak();renderRen();if($('pdlg').open)renderPrim()},fail)
     ];
   }else{unsub.forEach(f=>f());unsub=[]}
 });
@@ -250,35 +267,32 @@ $('login-form').onsubmit=e=>{e.preventDefault();
   auth.signInWithEmailAndPassword($('le').value,$('lp').value).catch(()=>{const r=$('lerr');r.style.display='block';r.textContent='E-posta veya şifre hatalı.'})};
 
 $('date').value=$('p-first').value=today();
-$('f-month').value=today().slice(0,7);
 
-// ---------- KASA ----------
+// ---------- KASA (sadece elle girilen gelir / gider) ----------
+// Eski sürümden kalan prim / şirket kayıtları kasada görünmez (silinmez, sadece gizlenir).
+const isPrim=t=>t.type==='prim_in'||t.type==='prim_out'||(t.type==='income'&&(t.category==='Poliçe Peşinatı'||(t.category==='Müşteri Tahsilatı'&&/Pol No:/.test(t.description||''))))||(t.type==='expense'&&t.category==='Şirket Cari Ödemesi');
+const manual=()=>tx.filter(t=>!isPrim(t)&&(t.type==='income'||t.type==='expense'));
 $('tf').onsubmit=e=>{e.preventDefault();
-  db.collection('transactions').add({type:$('type').value,date:$('date').value,amount:parseFloat($('amount').value),category:$('type').value==='prim_in'?'Prim Tahsilatı':$('type').value==='prim_out'?'Şirkete Prim Ödemesi':$('category').value,method:$('method').value,description:$('description').value,timestamp:Date.now()})
-   .then(()=>{toast('Kasaya işlendi');$('tf').reset();$('date').value=today()}).catch(fail)};
+  db.collection('transactions').add({type:$('type').value,date:$('date').value,amount:parseFloat($('amount').value),category:$('category').value,method:$('method').value,description:$('description').value,timestamp:Date.now()})
+   .then(()=>{toast('Kaydedildi');$('tf').reset();$('date').value=today()}).catch(fail)};
 function delTx(id){if(confirm('Bu kasa kaydı silinsin mi?'))db.collection('transactions').doc(id).delete().then(()=>toast('Kayıt silindi')).catch(fail)}
 function kasaFiltered(){
-  const m=$('f-month').value,ty=$('f-type').value,q=$('f-q').value.toLowerCase();
-  return tx.filter(t=>(!m||t.date.startsWith(m))&&(ty==='prim'?isPrim(t):!isPrim(t)&&(ty==='all'||t.type===ty))&&(!q||(t.description+t.category).toLowerCase().includes(q)));
+  const r=$('f-range').value,ty=$('f-type').value,q=$('f-q').value.toLowerCase(),td=today(),m=td.slice(0,7);
+  return manual().filter(t=>(r==='all'||(r==='day'&&t.date===td)||(r==='month'&&t.date.startsWith(m)))&&(ty==='all'||t.type===ty)&&(!q||((t.description||'')+t.category).toLowerCase().includes(q)));
 }
-// Prim (müşteriden alınıp şirkete aktarılan para) kasaya karışmaz; poliçelerden ayrı hesaplanır.
-const isPrim=t=>t.type==='prim_in'||t.type==='prim_out'||(t.type==='income'&&(t.category==='Poliçe Peşinatı'||(t.category==='Müşteri Tahsilatı'&&/Pol No:/.test(t.description||''))))||(t.type==='expense'&&t.category==='Şirket Cari Ödemesi');
-const kind=t=>isPrim(t)?'prim':t.type;
-const instIn=m=>pols.flatMap(p=>p.installments.filter(i=>i.isPaid&&(!m||(i.paidDate||'').startsWith(m))).map(i=>({p,i})));
-const premSum=m=>instIn(m).reduce((a,x)=>a+x.i.amount,0);
-const commSum=m=>instIn(m).reduce((a,x)=>a+x.i.amount*(x.p.commission||0)/100,0);
-const KL={income:['Gelir','p-ok','ok','+'],expense:['Gider','p-bad','bad','−'],prim:['Prim (arşiv)','p-warn','warn','']};
 function renderKasa(){
-  const f=kasaFiltered(),m=$('f-month').value;
-  $('tl').innerHTML=f.length?f.map(t=>{const k=KL[kind(t)]||KL.income;return `<tr><td>${fd(t.date)}</td><td><span class="pill ${k[1]}">${k[0]}</span></td>
-    <td>${esc(t.category)}<br><small style="color:var(--muted)">${esc(t.method||'')}</small></td><td class="w">${esc(t.description)||'-'}</td>
-    <td class="${k[2]}"><b>${k[3]}${money(t.amount)}</b></td><td><button class="x" onclick="delTx('${t.id}')">✕</button></td></tr>`}).join('')
+  const all=manual(),td=today(),sum=a=>a.reduce((s,t)=>s+t.amount,0);
+  const I=all.filter(t=>t.type==='income'),E=all.filter(t=>t.type==='expense'),dI=sum(I.filter(t=>t.date===td)),dE=sum(E.filter(t=>t.date===td));
+  $('s-bal').textContent=money(sum(I)-sum(E));$('s-inc').textContent=money(dI);$('s-exp').textContent=money(dE);$('s-net').textContent=money(dI-dE);
+  const f=kasaFiltered();
+  $('tl').innerHTML=f.length?f.map(t=>{const inc=t.type==='income';return `<tr><td>${fd(t.date)}</td><td><span class="pill ${inc?'p-ok':'p-bad'}">${inc?'Gelir':'Gider'}</span></td>
+    <td>${esc(t.category)}<br><small class="m">${esc(t.method||'')}</small></td><td class="w">${esc(t.description)||'-'}</td>
+    <td class="${inc?'ok':'bad'}"><b>${inc?'+':'−'}${money(t.amount)}</b></td><td><button class="x" onclick="delTx('${t.id}')">✕</button></td></tr>`}).join('')
     :'<tr><td colspan="6" class="empty">Bu filtreye uygun kayıt yok.</td></tr>';
-  const s=x=>f.filter(t=>t.type===x).reduce((a,t)=>a+t.amount,0),pr=premSum(m),cm=commSum(m);
-  $('k-sum').innerHTML=$('f-type').value==='prim'?'<small style="color:var(--muted)">Bu liste kasa hesabına dahil değildir (eski prim kayıtları).</small>':`Gelir <span class="ok">${money(s('income'))}</span> · Gider <span class="bad">${money(s('expense'))}</span> · <b>Kasa net ${money(s('income')-s('expense'))}</b>`;
-  $('k-pol').innerHTML=`<b>Poliçeler (kasadan ayrı hesap)</b> · ${m?'Seçili ay':'Tüm zamanlar'}: Tahsil edilen prim <b class="warn">${money(pr)}</b> (şirketin parası) · Komisyonum <b class="ok">${money(cm)}</b> · Şirkete aktarılacak net prim <b>${money(pr-cm)}</b>`;
+  const s=x=>f.filter(t=>t.type===x).reduce((a,t)=>a+t.amount,0);
+  $('k-sum').innerHTML=`Gelir <span class="ok">${money(s('income'))}</span> · Gider <span class="bad">${money(s('expense'))}</span> · <b>Net ${money(s('income')-s('expense'))}</b>`;
 }
-['f-month','f-type','f-q'].forEach(id=>$(id).addEventListener('input',renderKasa));
+['f-range','f-type','f-q'].forEach(id=>$(id).addEventListener('input',renderKasa));
 
 // ---------- POLİÇE ----------
 $('pf').onsubmit=e=>{e.preventDefault();
@@ -286,7 +300,7 @@ $('pf').onsubmit=e=>{e.preventDefault();
   const inst=[...Array(n)].map((_,i)=>({id:i+1,number:i+1,dueDate:addMonths(first,i),amount:i===n-1?+(total-each*(n-1)).toFixed(2):each,isPaid:false,paidDate:null}));
   db.collection('policies').add({client:$('p-client').value.trim(),phone:$('p-phone').value.trim(),policyNo:$('p-no').value.trim(),type:$('p-type').value,company:$('p-company').value.trim(),
     totalAmount:total,commission:parseFloat($('p-com').value)||0,endDate:$('p-end').value||'',installments:inst,timestamp:Date.now()})
-   .then(()=>{toast('Poliçe oluşturuldu');$('pf').reset();$('p-first').value=today()}).catch(fail)};
+   .then(()=>{toast('Poliçe kaydedildi');$('pf').reset();$('p-first').value=today()}).catch(fail)};
 
 function payInst(pid,iid){
   const p=pols.find(x=>x.id===pid),i=p&&p.installments.find(x=>x.id===iid);
@@ -295,11 +309,9 @@ function payInst(pid,iid){
   if(mm===null)return;
   i.method=['Nakit','Kredi Kartı','Havale/EFT'].find(x=>x.toLowerCase()===mm.trim().toLowerCase())||'Nakit';
   i.isPaid=true;i.paidDate=today();
-  const b=db.batch();
-  b.update(db.collection('policies').doc(pid),{installments:p.installments});
-  b.commit().then(()=>{toast('Tahsilat kaydedildi (kasaya yazılmadı)');if(confirm('Tahsilat makbuzu oluşturulsun mu?'))receipt(pid,iid)}).catch(fail);
+  db.collection('policies').doc(pid).update({installments:p.installments}).then(()=>{toast('Tahsilat kaydedildi');if(confirm('Tahsilat makbuzu oluşturulsun mu?'))receipt(pid,iid)}).catch(fail);
 }
-// Bir taksit tutarı değişince fark, ödenmemiş diğer taksitlere eşit dağıtılır (ödenmişlere dokunulmaz).
+// Bir taksit tutarı değişince fark, ödenmemiş diğer taksitlere eşit dağıtılır.
 function editInst(pid,iid){
   const p=pols.find(x=>x.id===pid),inst=p&&JSON.parse(JSON.stringify(p.installments)),i=inst&&inst.find(x=>x.id===iid);
   if(!i||i.isPaid)return;
@@ -316,7 +328,7 @@ function editInst(pid,iid){
   others.forEach((x,k)=>x.amount=(k===others.length-1?rest-each*(others.length-1):each)/100);
   db.collection('policies').doc(pid).update({installments:inst}).then(()=>toast(others.length?'Taksit güncellendi, fark diğer taksitlere dağıtıldı':'Taksit güncellendi')).catch(fail);
 }
-// Gecikmiş (veya herhangi bir ödenmemiş) taksidin vadesini değiştirir; istenirse sonraki taksitleri de aynı gün sayısı kadar kaydırır.
+// Ödenmemiş taksidin vadesini değiştirir; istenirse sonraki taksitleri de kaydırır.
 function editDue(pid,iid){
   const p=pols.find(x=>x.id===pid),inst=p&&JSON.parse(JSON.stringify(p.installments)),i=inst&&inst.find(x=>x.id===iid);
   if(!i||i.isPaid)return;
@@ -334,55 +346,82 @@ function editDue(pid,iid){
 }
 function delPol(id){if(confirm('Poliçe, tüm taksitleri ve bu poliçenin makbuz kayıtları silinsin mi?'))db.collection('policies').doc(id).delete().then(()=>toast('Poliçe silindi')).catch(fail)}
 function toggleP(id){open.has(id)?open.delete(id):open.add(id);renderPols()}
+function toggleB(k){k=decodeURIComponent(k);open.has('b:'+k)?open.delete('b:'+k):open.add('b:'+k);renderBorc()}
 const remaining=p=>p.totalAmount-p.installments.filter(i=>i.isPaid).reduce((a,i)=>a+i.amount,0);
 const isLate=p=>p.installments.some(i=>!i.isPaid&&daysTo(i.dueDate)<0);
-
+const phoneIntl=s=>{let ph=(s||'').replace(/\D/g,'');if(!ph)return '';if(ph.startsWith('0'))return '9'+ph;return ph.length===10?'90'+ph:ph};
 function waLink(p,i){
-  let ph=(p.phone||'').replace(/\D/g,'');
-  if(!ph)return '';
-  if(ph.startsWith('0'))ph='9'+ph;else if(ph.length===10)ph='90'+ph;
+  const ph=phoneIntl(p.phone);if(!ph)return '';
   const msg=`Sayın ${p.client}, ${p.policyNo} numaralı ${p.type||''} poliçenizin ${i.number}. taksiti (${money(i.amount)}) ${fd(i.dueDate)} tarihinde vadelidir. Bilgilerinize sunarız.`;
   return `https://wa.me/${ph}?text=${encodeURIComponent(msg)}`;
+}
+// Taksit satırları (Poliçeler ve Borç Takibi sekmelerinde ortak)
+function instTable(p){
+  return `<table>${p.installments.map(i=>{const d=daysTo(i.dueDate),w=waLink(p,i);return `<tr>
+    <td>${i.number}. taksit</td><td>${fd(i.dueDate)}</td><td>${money(i.amount)}</td>
+    <td>${i.isPaid?`<span class="pill p-ok">Ödendi ${fd(i.paidDate)}</span>`:d<0?`<span class="pill p-bad">${-d} gün gecikti</span>`:`<span class="pill p-warn">${d===0?'Bugün':d+' gün kaldı'}</span>`}</td>
+    <td>${i.isPaid?`<button class="btn sm ghost" onclick="receipt('${p.id}',${i.id})">Makbuz</button>`:`<div class="acts"><button class="btn sm" onclick="payInst('${p.id}',${i.id})">Tahsil et</button><button class="btn sm ghost" onclick="editInst('${p.id}',${i.id})">Tutarı düzenle</button><button class="btn sm ghost" onclick="editDue('${p.id}',${i.id})">Vadeyi değiştir</button>${w?`<a class="btn sm wa" style="text-decoration:none" target="_blank" rel="noopener" href="${w}">WhatsApp</a>`:''}</div>`}</td></tr>`}).join('')}</table>`;
 }
 function renderPols(){
   const q=$('p-q').value.toLowerCase(),fl=$('p-f').value;
   const f=pols.filter(p=>(p.client+p.policyNo+(p.type||'')).toLowerCase().includes(q)&&(fl==='all'||(fl==='open'&&remaining(p)>0)||(fl==='late'&&isLate(p))||(fl==='closed'&&remaining(p)<=0)));
   $('pl').innerHTML=f.length?f.map(p=>{
     const r=remaining(p),paid=p.installments.filter(i=>i.isPaid).length;
-    let h=`<tr><td class="w"><b>${esc(p.client)}</b>${isLate(p)?' <span class="pill p-bad">Gecikmiş</span>':''}<br><small style="color:var(--muted)">${esc(p.phone||'')}</small></td>
-      <td>${esc(p.policyNo)} <span class="pill p-warn">${esc(p.type||'-')}</span><br><small style="color:var(--muted)">${esc(p.company||'-')}${p.endDate?' · Bitiş '+fd(p.endDate):''}</small></td>
-      <td>${money(p.totalAmount)}${p.commission?`<br><small style="color:var(--muted)">Komisyon ${money(p.totalAmount*p.commission/100)}</small>`:''}</td>
+    let h=`<tr><td class="w"><b>${esc(p.client)}</b>${isLate(p)?' <span class="pill p-bad">Gecikmiş</span>':''}<br><small class="m">${esc(p.phone||'')}</small></td>
+      <td>${esc(p.policyNo)} <span class="pill p-warn">${esc(p.type||'-')}</span><br><small class="m">${esc(p.company||'-')}${p.endDate?' · Bitiş '+fd(p.endDate):''}</small></td>
+      <td>${money(p.totalAmount)}</td>
       <td class="${r>0?'bad':'ok'}"><b>${money(r)}</b></td>
       <td><div class="acts"><button class="btn sm ghost" onclick="toggleP('${p.id}')">Taksitler ${paid}/${p.installments.length}</button><button class="btn sm ghost" onclick="statement('${p.id}')">Vade listesi</button><button class="x" onclick="delPol('${p.id}')">Sil</button></div></td></tr>`;
-    if(open.has(p.id))h+=`<tr><td colspan="5" class="sub"><table>${p.installments.map(i=>{const d=daysTo(i.dueDate),w=waLink(p,i);return `<tr>
-      <td>${i.number}. taksit</td><td>${fd(i.dueDate)}</td><td>${money(i.amount)}</td>
-      <td>${i.isPaid?`<span class="pill p-ok">Ödendi ${fd(i.paidDate)}</span>`:d<0?`<span class="pill p-bad">${-d} gün gecikti</span>`:`<span class="pill p-warn">${d===0?'Bugün':d+' gün kaldı'}</span>`}</td>
-      <td>${i.isPaid?`<button class="btn sm ghost" onclick="receipt('${p.id}',${i.id})">Makbuz</button>`:`<div class="acts"><button class="btn sm" onclick="payInst('${p.id}',${i.id})">Tahsil et</button><button class="btn sm ghost" onclick="editInst('${p.id}',${i.id})">Tutarı düzenle</button><button class="btn sm ghost" onclick="editDue('${p.id}',${i.id})">Vadeyi değiştir</button>${w?`<a class="btn sm wa" style="text-decoration:none" target="_blank" rel="noopener" href="${w}">WhatsApp</a>`:''}</div>`}</td></tr>`}).join('')}</table></td></tr>`;
+    if(open.has(p.id))h+=`<tr><td colspan="5" class="sub">${instTable(p)}</td></tr>`;
     return h}).join(''):'<tr><td colspan="5" class="empty">Poliçe bulunamadı.</td></tr>';
 }
 ['p-q','p-f'].forEach(id=>$(id).addEventListener('input',renderPols));
-
-// ---------- PANEL ----------
-function renderPanel(){
-  const m=today().slice(0,7);
-  const sum=a=>a.reduce((s,t)=>s+t.amount,0),inM=a=>a.filter(t=>t.date.startsWith(m)),man=tx.filter(t=>!isPrim(t));
-  const I=man.filter(t=>t.type==='income'),E=man.filter(t=>t.type==='expense');
-  $('s-bal').textContent=money(sum(I)-sum(E));
-  $('s-inc').textContent=money(sum(inM(I)));$('s-exp').textContent=money(sum(inM(E)));$('s-net').textContent=money(sum(inM(I))-sum(inM(E)));
-  $('s-prim').textContent=money(premSum(m));$('s-com').textContent=money(commSum(m));
-  $('s-rec').textContent=money(pols.reduce((a,p)=>a+remaining(p),0));
-  const due=[];
-  pols.forEach(p=>p.installments.forEach(i=>{if(!i.isPaid){const d=daysTo(i.dueDate);if(d<=7)due.push({p,i,d})}}));
-  due.sort((a,b)=>a.d-b.d);
-  $('s-late').textContent=money(due.filter(x=>x.d<0).reduce((a,x)=>a+x.i.amount,0));
-  $('due').innerHTML=due.length?due.map(({p,i,d})=>{const w=waLink(p,i);return `<div class="item"><div><b>${esc(p.client)}</b><small>${esc(p.type||'')} ${esc(p.policyNo)} · ${i.number}. taksit · ${fd(i.dueDate)}</small></div>
-    <div class="acts"><span class="pill ${d<0?'p-bad':'p-warn'}">${d<0?-d+' gün gecikti':d===0?'Bugün':d+' gün kaldı'}</span><b>${money(i.amount)}</b>
-    <button class="btn sm" onclick="payInst('${p.id}',${i.id})">Tahsil et</button>${w?`<a class="btn sm wa" style="text-decoration:none" target="_blank" rel="noopener" href="${w}">WhatsApp</a>`:''}</div></div>`}).join(''):'<p class="empty">Yaklaşan veya geciken taksit yok. 🎉</p>';
+function renderRen(){
   const ren=pols.filter(p=>p.endDate&&daysTo(p.endDate)>=0&&daysTo(p.endDate)<=30).sort((a,b)=>a.endDate.localeCompare(b.endDate));
-  $('ren').innerHTML=ren.length?ren.map(p=>{const d=daysTo(p.endDate),ph=(p.phone||'').replace(/\D/g,'');let l='';
-    if(ph){const n=ph.startsWith('0')?'9'+ph:ph.length===10?'90'+ph:ph;l=`<a class="btn sm wa" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/${n}?text=${encodeURIComponent(`Sayın ${p.client}, ${p.policyNo} numaralı ${p.type||''} poliçeniz ${fd(p.endDate)} tarihinde sona erecektir. Yenileme için bizimle iletişime geçebilirsiniz.`)}">WhatsApp</a>`}
-    return `<div class="item"><div><b>${esc(p.client)}</b><small>${esc(p.type||'')} ${esc(p.policyNo)} · ${esc(p.company||'')}</small></div><div class="acts"><span class="pill p-warn">${d===0?'Bugün bitiyor':d+' gün kaldı'}</span>${l}</div></div>`}).join(''):'<p class="empty">30 gün içinde biten poliçe yok.</p>';
+  $('ren-wrap').style.display=ren.length?'block':'none';
+  $('ren').innerHTML=ren.map(p=>{const d=daysTo(p.endDate),n=phoneIntl(p.phone);
+    const l=n?`<a class="btn sm wa" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/${n}?text=${encodeURIComponent(`Sayın ${p.client}, ${p.policyNo} numaralı ${p.type||''} poliçeniz ${fd(p.endDate)} tarihinde sona erecektir. Yenileme için bizimle iletişime geçebilirsiniz.`)}">WhatsApp</a>`:'';
+    return `<div class="item"><div><b>${esc(p.client)}</b><small>${esc(p.type||'')} ${esc(p.policyNo)} · ${esc(p.company||'')}</small></div><div class="acts"><span class="pill p-warn">${d===0?'Bugün bitiyor':d+' gün kaldı'}</span>${l}</div></div>`}).join('');
 }
+
+// ---------- BORÇ TAKİBİ (kasadan ayrı) ----------
+function renderBorc(){
+  const q=$('b-q').value.toLowerCase(),fl=$('b-f').value,g={};
+  pols.forEach(p=>{const k=p.client.trim().toLowerCase();(g[k]=g[k]||{name:p.client,phone:'',list:[]}).list.push(p);if(p.phone)g[k].phone=p.phone});
+  const all=Object.entries(g).map(([k,x])=>{
+    const un=x.list.flatMap(p=>p.installments.filter(i=>!i.isPaid).map(i=>({p,i,d:daysTo(i.dueDate)})));
+    return{k,x,un,rem:un.reduce((a,u)=>a+u.i.amount,0),late:un.filter(u=>u.d<0).reduce((a,u)=>a+u.i.amount,0),next:un.map(u=>u.i.dueDate).sort()[0]};
+  }).filter(r=>r.rem>0);
+  const sum=a=>a.reduce((s,r)=>s+r,0);
+  $('b-rec').textContent=money(sum(all.map(r=>r.rem)));
+  $('b-late').textContent=money(sum(all.map(r=>r.late)));
+  $('b-soon').textContent=money(sum(all.flatMap(r=>r.un.filter(u=>u.d>=0&&u.d<=7).map(u=>u.i.amount))));
+  $('b-cnt').textContent=all.length;
+  const rows=all.filter(r=>r.x.name.toLowerCase().includes(q)&&(fl==='all'||(fl==='late'&&r.late>0)||(fl==='soon'&&r.un.some(u=>u.d>=0&&u.d<=7))))
+    .sort((a,b)=>b.late-a.late||(a.next||'').localeCompare(b.next||''));
+  $('bl').innerHTML=rows.length?rows.map(r=>{
+    const key=encodeURIComponent(r.k),isOpen=open.has('b:'+r.k),d=daysTo(r.next);
+    let h=`<tr><td class="w"><b>${esc(r.x.name)}</b><br><small class="m">${esc(r.x.phone||'')}</small></td>
+      <td><b class="warn">${money(r.rem)}</b></td><td class="${r.late>0?'bad':'m'}"><b>${r.late>0?money(r.late):'-'}</b></td>
+      <td>${fd(r.next)} <span class="pill ${d<0?'p-bad':'p-warn'}">${d<0?-d+' gün gecikti':d===0?'Bugün':d+' gün kaldı'}</span></td>
+      <td><button class="btn sm ghost" onclick="toggleB('${key}')">${isOpen?'Gizle':'Taksitler'}</button></td></tr>`;
+    if(isOpen)h+=`<tr><td colspan="5" class="sub">${r.x.list.filter(p=>remaining(p)>0).map(p=>`<p style="padding:8px 10px 0"><b>${esc(p.type||'Poliçe')}</b> ${esc(p.policyNo)} <span class="m">· ${esc(p.company||'')}</span></p>${instTable(p)}`).join('')}</td></tr>`;
+    return h}).join(''):'<tr><td colspan="5" class="empty">Bu filtreye uygun borç yok.</td></tr>';
+}
+['b-q','b-f'].forEach(id=>$(id).addEventListener('input',renderBorc));
+
+// ---------- PRİM ÖZETİ (sadece istenince açılır) ----------
+function openPrim(){if(!$('pm').value)$('pm').value=today().slice(0,7);renderPrim();$('pdlg').showModal()}
+function renderPrim(){
+  const m=$('pm').value;
+  const rows=pols.flatMap(p=>p.installments.filter(i=>i.isPaid&&(!m||(i.paidDate||'').startsWith(m))).map(i=>({p,i,c:i.amount*(p.commission||0)/100})))
+    .sort((a,b)=>(b.i.paidDate||'').localeCompare(a.i.paidDate||''));
+  const pr=rows.reduce((a,r)=>a+r.i.amount,0),cm=rows.reduce((a,r)=>a+r.c,0);
+  $('pm-prim').textContent=money(pr);$('pm-com').textContent=money(cm);$('pm-net').textContent=money(pr-cm);
+  $('pm-l').innerHTML=rows.length?rows.map(({p,i,c})=>`<tr><td>${fd(i.paidDate)}</td><td>${esc(p.client)}</td><td>${esc(p.type||'')} ${esc(p.policyNo)} (${i.number}/${p.installments.length})</td><td>${money(i.amount)}</td><td class="ok">${money(c)}</td></tr>`).join('')
+    :'<tr><td colspan="5" class="empty">Bu dönemde tahsilat yok.</td></tr>';
+}
+$('pm').addEventListener('input',renderPrim);
 
 // ---------- ACENTE BİLGİLERİ ----------
 const AF=[['unvan','Acente unvanı'],['vd','Vergi dairesi'],['vno','Vergi no'],['ruhsat','Acente ruhsat / sicil no'],['adres','Adres'],['tel','Telefon'],['mail','E-posta'],['iban','IBAN (isteğe bağlı)'],['yetkili','Yetkili adı soyadı']];
@@ -495,7 +534,7 @@ function csv(name,rows){
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s],{type:'text/csv;charset=utf-8;'}));a.download=`${name}_${today()}.csv`;a.click();
 }
 function exportKasa(){const f=kasaFiltered();if(!f.length)return toast('İndirilecek veri yok');
-  csv('Kasa',[['Tarih','Tip','Kategori','Yöntem','Açıklama','Tutar (TL)'],...f.map(t=>[fd(t.date),(KL[kind(t)]||KL.income)[0],t.category,t.method||'',t.description||'',String(t.amount).replace('.',',')])])}
+  csv('Kasa',[['Tarih','Tip','Kategori','Yöntem','Açıklama','Tutar (TL)'],...f.map(t=>[fd(t.date),t.type==='income'?'Gelir':'Gider',t.category,t.method||'',t.description||'',String(t.amount).replace('.',',')])])}
 function exportPol(){if(!pols.length)return toast('İndirilecek veri yok');
   csv('Policeler',[['Müşteri','Telefon','Poliçe No','Tür','Şirket','Bitiş','Toplam (TL)','Kalan (TL)','Komisyon %'],...pols.map(p=>[p.client,p.phone||'',p.policyNo,p.type||'',p.company||'',fd(p.endDate),String(p.totalAmount).replace('.',','),String(remaining(p)).replace('.',','),p.commission||0])])}
 </script>
